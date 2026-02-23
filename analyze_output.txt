@@ -1,0 +1,65 @@
+Analyzing roapp...                                              
+
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/auth/screens/login_screen.dart:69:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_list_screen.dart:185:49 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_list_screen.dart:203:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_list_screen.dart:294:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_list_screen.dart:307:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:88:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:104:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:107:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:166:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:311:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:396:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:521:39 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/customer/screens/customer_profile_screen.dart:522:39 • deprecated_member_use
+warning • Unused import: '../../../widgets/header_text.dart' • lib/features/dashboard/screens/dashboard_screen.dart:4:8 • unused_import
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dashboard/screens/dashboard_screen.dart:117:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dashboard/screens/dashboard_screen.dart:275:59 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dashboard/screens/dashboard_screen.dart:338:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dashboard/screens/dashboard_screen.dart:398:33 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:154:64 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:169:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:268:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:284:54 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:287:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:418:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/dispatch/screens/dispatch_hub_screen.dart:573:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:95:47 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:142:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:196:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:257:45 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:280:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:361:41 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:405:15 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:407:15 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:407:50 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:409:15 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:409:50 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:462:41 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:484:29 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:486:29 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:486:61 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:488:29 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:530:23 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:532:23 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:532:55 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/features/insights/screens/insights_screen.dart:534:23 • curly_braces_in_flow_control_structures
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:641:46 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:644:48 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/insights/screens/insights_screen.dart:652:52 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/inventory/screens/inventory_screen.dart:72:58 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/inventory/screens/inventory_screen.dart:90:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/inventory/screens/inventory_screen.dart:239:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/notifications/screens/notifications_screen.dart:173:55 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/notifications/screens/notifications_screen.dart:225:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/notifications/screens/notifications_screen.dart:340:35 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/supplier/screens/supplier_directory_screen.dart:180:43 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/supplier/screens/supplier_directory_screen.dart:233:56 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/technician/screens/technicians_screen.dart:60:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/technician/screens/technicians_screen.dart:204:41 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/technician/screens/technicians_screen.dart:324:60 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/features/technician/screens/technicians_screen.dart:344:62 • deprecated_member_use
+   info • 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss • lib/widgets/custom_button.dart:35:59 • deprecated_member_use
+
+61 issues found. (ran in 1.5s)

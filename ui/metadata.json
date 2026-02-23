@@ -1,0 +1,7 @@
+{
+  "name": "RO Service Manager",
+  "description": "A comprehensive management system for RO service businesses, including customer profiles, inventory tracking, dispatching, and business insights.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
