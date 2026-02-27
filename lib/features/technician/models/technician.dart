@@ -21,6 +21,32 @@ class Technician extends Equatable {
     this.avatar,
   });
 
+  factory Technician.fromMap(Map<String, dynamic> map) {
+    return Technician(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      phone: map['phone'] as String,
+      region: map['region'] as String,
+      hubs: (map['hubs'] as String).split(','),
+      tasksToday: map['tasksToday'] as int,
+      status: map['status'] as String,
+      avatar: map['avatar'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'phone': phone,
+      'region': region,
+      'hubs': hubs.join(','),
+      'tasksToday': tasksToday,
+      'status': status,
+      'avatar': avatar,
+    };
+  }
+
   @override
   List<Object?> get props => [
     id,

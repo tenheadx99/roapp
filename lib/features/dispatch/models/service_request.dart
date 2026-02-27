@@ -19,6 +19,30 @@ class ServiceRequest extends Equatable {
     required this.status,
   });
 
+  factory ServiceRequest.fromMap(Map<String, dynamic> map) {
+    return ServiceRequest(
+      id: map['id'] as String,
+      customerName: map['customerName'] as String,
+      address: map['address'] as String,
+      type: map['type'] as String,
+      model: map['model'] as String,
+      time: map['time'] as String,
+      status: map['status'] as String,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'customerName': customerName,
+      'address': address,
+      'type': type,
+      'model': model,
+      'time': time,
+      'status': status,
+    };
+  }
+
   @override
   List<Object?> get props => [
     id,

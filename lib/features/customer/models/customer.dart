@@ -20,6 +20,30 @@ class Customer extends Equatable {
     required this.area,
   });
 
+  factory Customer.fromMap(Map<String, dynamic> map) {
+    return Customer(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      phone: map['phone'] as String,
+      model: map['model'] as String,
+      status: map['status'] as String,
+      lastService: map['lastService'] as String,
+      area: map['area'] as String,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'phone': phone,
+      'model': model,
+      'status': status,
+      'lastService': lastService,
+      'area': area,
+    };
+  }
+
   @override
   List<Object?> get props => [
     id,

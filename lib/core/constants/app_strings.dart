@@ -12,6 +12,14 @@ class AppStrings {
   static const String noAccess = "Don't have access?";
   static const String contactAdmin = "Contact Administrator";
 
+  // Passkey feature
+  static const String passkeySetupTitle = "Setup Passkey";
+  static const String passkeyLoginTitle = "Login with Passkey";
+  static const String enterPasskey = "Enter your Passkey";
+  static const String confirmPasskey = "Confirm your Passkey";
+  static const String invalidPasskey = "Invalid Passkey. Try again.";
+  static const String passkeySuccess = "Passkey validated successfully.";
+
   // Navigation / Titles
   static const String appName = "RO Manager";
   static const String businessOverview = "Business Overview";

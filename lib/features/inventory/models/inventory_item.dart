@@ -21,6 +21,32 @@ class InventoryItem extends Equatable {
     required this.category,
   });
 
+  factory InventoryItem.fromMap(Map<String, dynamic> map) {
+    return InventoryItem(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      sku: map['sku'] as String,
+      supplier: map['supplier'] as String,
+      price: map['price'] as double,
+      stock: map['stock'] as int,
+      lowStockThreshold: map['lowStockThreshold'] as int,
+      category: map['category'] as String,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'sku': sku,
+      'supplier': supplier,
+      'price': price,
+      'stock': stock,
+      'lowStockThreshold': lowStockThreshold,
+      'category': category,
+    };
+  }
+
   @override
   List<Object?> get props => [
     id,

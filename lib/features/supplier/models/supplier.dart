@@ -19,6 +19,30 @@ class Supplier extends Equatable {
     required this.status,
   });
 
+  factory Supplier.fromMap(Map<String, dynamic> map) {
+    return Supplier(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      contactPerson: map['contactPerson'] as String,
+      city: map['city'] as String,
+      specialties: (map['specialties'] as String).split(','),
+      activePOs: map['activePOs'] as int,
+      status: map['status'] as String,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'contactPerson': contactPerson,
+      'city': city,
+      'specialties': specialties.join(','),
+      'activePOs': activePOs,
+      'status': status,
+    };
+  }
+
   @override
   List<Object?> get props => [
     id,
