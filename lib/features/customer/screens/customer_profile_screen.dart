@@ -4,6 +4,8 @@ import '../../../widgets/header_text.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../models/customer.dart';
+import '../models/service_history.dart';
+import '../repositories/customer_repository.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   final Customer customer;
@@ -12,34 +14,6 @@ class CustomerProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Dummy history data based on React screen
-    final history = [
-      {
-        'id': 1,
-        'title': 'Filter Replacement',
-        'date': 'Oct 24, 2023 • 11:30 AM',
-        'parts': ['Sediment Filter', 'Activated Carbon'],
-        'tech': 'Ravi Kumar',
-        'price': 120.00,
-      },
-      {
-        'id': 2,
-        'title': 'General Maintenance',
-        'date': 'Jul 12, 2023 • 02:15 PM',
-        'parts': ['None (Cleaning Only)'],
-        'tech': 'Amit Shah',
-        'price': 45.00,
-      },
-      {
-        'id': 3,
-        'title': 'Membrane Change',
-        'date': 'Jan 05, 2023 • 10:00 AM',
-        'parts': ['RO Membrane', 'FR 450'],
-        'tech': 'Ravi Kumar',
-        'price': 210.00,
-      },
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
@@ -65,7 +39,8 @@ class CustomerProfileScreen extends StatelessWidget {
               children: [
                 _buildProfileCard(context),
                 _buildTabBar(),
-                _buildHistoryList(history),
+                _buildTabBar(),
+                _buildHistoryList(context),
               ],
             ),
           ),
@@ -339,169 +314,198 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryList(List<Map<String, dynamic>> history) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              'RECENT VISITS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF94A3B8),
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: history.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final item = history[index];
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade100),
+  Widget _buildHistoryList(BuildContext context) {
+    return FutureBuilder<List<ServiceHistory>>(
+      future: CustomerRepository().getServiceHistory(customer.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final history = snapshot.data ?? [];
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'RECENT VISITS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF94A3B8),
+                    letterSpacing: 1.5,
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SemiBoldTextView(
-                                text: item['title'] as String,
-                                fontSize: 14,
-                              ),
-                              SubRegularText(text: item['date'] as String),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF007FFF).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'COMPLETED',
-                              style: TextStyle(
-                                color: Color(0xFF007FFF),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              ),
+              if (history.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No service history found.',
+                      style: TextStyle(color: Colors.grey),
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.vertical(
-                          bottom: Radius.circular(16),
-                        ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: history.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final item = history[index];
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'PARTS REPLACED',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF94A3B8),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SemiBoldTextView(
+                                      text: item.type,
+                                      fontSize: 14,
+                                    ),
+                                    SubRegularText(text: item.date),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFF007FFF,
+                                    ).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'COMPLETED',
+                                    style: TextStyle(
+                                      color: Color(0xFF007FFF),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: (item['parts'] as List<String>).map((
-                              part,
-                            ) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  part,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(height: 1),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: Colors.grey.shade200,
-                                    backgroundImage: const NetworkImage(
-                                      'https://lh3.googleusercontent.com/aida-public/AB6AXuD4Sx1YCi58f2ilhJyNTxSaQFbgKcz_LvEdOFfhLLcWGGQpuwK2i1UO1Pf1R-91BdyKuR6oUASBI6C64cOVRUb0aua0pPcSYXFWMb2Y05px20SWNIIMlDyNq_1GySh9p1s_nv5NTPt1O2vZS_r74EIxHzIfyUuYuUr3J_Lrd6Us7MB_rIizokhySFMCrfJaGIRxtCGRm9U_grwST1htLPLIU19JqM7qTz_eUHiBgsjKemZWkOUWswtT3M1XOEWpgZ-3t9xH3-M_abF1',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Tech: ${item['tech']}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF475569),
-                                    ),
-                                  ),
-                                ],
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.vertical(
+                                bottom: Radius.circular(16),
                               ),
-                              Text(
-                                '\$${(item['price'] as double).toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF007FFF),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'PARTS REPLACED',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF94A3B8),
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: item.partsReplaced.split(',').map((
+                                    part,
+                                  ) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        part.trim(),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                const SizedBox(height: 16),
+                                const Divider(height: 1),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.grey.shade200,
+                                          backgroundImage: const NetworkImage(
+                                            'https://lh3.googleusercontent.com/aida-public/AB6AXuD4Sx1YCi58f2ilhJyNTxSaQFbgKcz_LvEdOFfhLLcWGGQpuwK2i1UO1Pf1R-91BdyKuR6oUASBI6C64cOVRUb0aua0pPcSYXFWMb2Y05px20SWNIIMlDyNq_1GySh9p1s_nv5NTPt1O2vZS_r74EIxHzIfyUuYuUr3J_Lrd6Us7MB_rIizokhySFMCrfJaGIRxtCGRm9U_grwST1htLPLIU19JqM7qTz_eUHiBgsjKemZWkOUWswtT3M1XOEWpgZ-3t9xH3-M_abF1',
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Tech: ${item.technicianName}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '\$${item.cost.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF007FFF),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-              );
-            },
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

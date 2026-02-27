@@ -111,6 +111,87 @@ CREATE TABLE service_history (
   FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
 )
 ''');
+
+    await _seedData(db);
+  }
+
+  Future<void> _seedData(Database db) async {
+    // Customers
+    await db.insert('customers', {
+      'id': '1',
+      'name': 'Arjun Sharma',
+      'phone': '+91 98765 43210',
+      'model': 'Kent Grand+ RO (12L)',
+      'status': 'Service Due',
+      'lastService': '15 Oct 2023',
+      'area': 'West Delhi',
+    });
+    await db.insert('customers', {
+      'id': '2',
+      'name': 'Priya Mehra',
+      'phone': '+91 88223 11445',
+      'model': 'Pureit Copper+ Mineral',
+      'status': 'Operational',
+      'lastService': '02 Jan 2024',
+      'area': 'Rohini',
+    });
+
+    // Service History for Customer 1
+    await db.insert('service_history', {
+      'id': 'sh1',
+      'customerId': '1',
+      'date': 'Oct 24, 2023 • 11:30 AM',
+      'type': 'Filter Replacement',
+      'technicianName': 'Ravi Kumar',
+      'notes': 'Replaced basic filters',
+      'cost': 120.00,
+      'partsReplaced': 'Sediment Filter, Activated Carbon',
+    });
+
+    // Inventory
+    await db.insert('inventory', {
+      'id': 'r-i-1',
+      'name': 'RO Membrane 75 GPD',
+      'sku': 'RO-MEM-75',
+      'supplier': 'AquaPure Solutions',
+      'price': 45.50,
+      'stock': 12,
+      'lowStockThreshold': 15,
+      'category': 'Membranes',
+    });
+
+    // Technicians
+    await db.insert('technicians', {
+      'id': 'tech-1',
+      'name': 'Rahul Verma',
+      'phone': '+91 98765 43210',
+      'region': 'South Delhi',
+      'hubs': 'Hub A, Hub B',
+      'tasksToday': 4,
+      'status': 'online',
+    });
+
+    // Supplier
+    await db.insert('suppliers', {
+      'id': 'sup-1',
+      'name': 'AquaPure Solutions',
+      'contactPerson': 'Sunil Sharma',
+      'city': 'New Delhi',
+      'specialties': 'Membranes, Pumps',
+      'activePOs': 2,
+      'status': 'active',
+    });
+
+    // Service Request
+    await db.insert('service_requests', {
+      'id': 'req-1',
+      'customerName': 'Ravi Kumar',
+      'address': 'Greater Kailash, Delhi',
+      'type': 'Filter Replacement',
+      'model': 'Kent Grand+',
+      'time': '10:00 AM - 12:00 PM',
+      'status': 'new',
+    });
   }
 
   Future<void> close() async {

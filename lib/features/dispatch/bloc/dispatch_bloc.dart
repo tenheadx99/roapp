@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/service_request.dart';
+import '../repositories/dispatch_repository.dart';
 
 // --- Events ---
 abstract class DispatchEvent extends Equatable {
@@ -71,7 +72,11 @@ class DispatchError extends DispatchState {
 
 // --- Bloc ---
 class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
-  DispatchBloc() : super(DispatchInitial()) {
+  final DispatchRepository repository;
+
+  DispatchBloc({DispatchRepository? repository})
+    : repository = repository ?? DispatchRepository(),
+      super(DispatchInitial()) {
     on<LoadDispatchRequests>(_onLoadRequests);
     on<FilterDispatchRequests>(_onFilterRequests);
   }
@@ -81,40 +86,13 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
     Emitter<DispatchState> emit,
   ) async {
     emit(DispatchLoading());
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final requests = [
-      const ServiceRequest(
-        id: '1',
-        customerName: 'Arjun Sharma',
-        address: '42, Sunset Drive, West Delhi',
-        type: 'RO Filter Change',
-        model: 'Kent Grand+',
-        time: 'Today, 2:00 PM',
-        status: 'new',
-      ),
-      const ServiceRequest(
-        id: '2',
-        customerName: 'Priya Verma',
-        address: 'Apt 4B, Green Valley, Noida',
-        type: 'Motor Repair',
-        model: 'Aquaguard RO+UV',
-        time: 'Today, 4:30 PM',
-        status: 'new',
-      ),
-      const ServiceRequest(
-        id: '3',
-        customerName: 'Vikram Singh',
-        address: '12, MG Road, Gurugram',
-        type: 'Routine Maintenance',
-        model: 'Pureit Copper+',
-        time: 'Tomorrow, 10:00 AM',
-        status: 'assigned',
-      ),
-    ];
-
-    final filtered = _filterByTab(requests, 'New (4)');
-    emit(DispatchLoaded(allRequests: requests, filteredRequests: filtered));
+    try {
+      final requests = await repository.getServiceRequests();
+      final filtered = _filterByTab(requests, 'New (4)');
+      emit(DispatchLoaded(allRequests: requests, filteredRequests: filtered));
+    } catch (e) {
+      emit(DispatchError(e.toString()));
+    }
   }
 
   void _onFilterRequests(

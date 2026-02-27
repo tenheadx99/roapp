@@ -401,9 +401,9 @@ class _InsightsView extends StatelessWidget {
             final percentage = tasks / maxTasks;
 
             Color barColor;
-            if (tech['color'] == '#007fff')
+            if (tech['color'] == '#007fff') {
               barColor = const Color(0xFF007FFF);
-            else if (tech['color'] == '#007fff99')
+            } else if (tech['color'] == '#007fff99')
               barColor = const Color(0xFF007FFF).withOpacity(0.6);
             else
               barColor = const Color(0xFF007FFF).withOpacity(0.3);
@@ -480,9 +480,9 @@ class _InsightsView extends StatelessWidget {
                         centerSpaceRadius: 35,
                         sections: state.inventoryUsage.map((entry) {
                           Color color;
-                          if (entry['color'] == '#007fff')
+                          if (entry['color'] == '#007fff') {
                             color = const Color(0xFF007FFF);
-                          else if (entry['color'] == '#007fff66')
+                          } else if (entry['color'] == '#007fff66')
                             color = const Color(0xFF007FFF).withOpacity(0.6);
                           else
                             color = const Color(0xFFF1F5F9);
@@ -526,9 +526,9 @@ class _InsightsView extends StatelessWidget {
                 child: Column(
                   children: state.inventoryUsage.map((entry) {
                     Color color;
-                    if (entry['color'] == '#007fff')
+                    if (entry['color'] == '#007fff') {
                       color = const Color(0xFF007FFF);
-                    else if (entry['color'] == '#007fff66')
+                    } else if (entry['color'] == '#007fff66')
                       color = const Color(0xFF007FFF).withOpacity(0.6);
                     else
                       color = const Color(0xFFF1F5F9);

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/supplier.dart';
+import '../repositories/supplier_repository.dart';
 
 // --- Events ---
 abstract class SupplierEvent extends Equatable {
@@ -89,7 +90,11 @@ class SupplierError extends SupplierState {
 
 // --- Bloc ---
 class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
-  SupplierBloc() : super(SupplierInitial()) {
+  final SupplierRepository repository;
+
+  SupplierBloc({SupplierRepository? repository})
+    : repository = repository ?? SupplierRepository(),
+      super(SupplierInitial()) {
     on<LoadSuppliersRequested>(_onLoadSuppliers);
     on<SearchSuppliers>(_onSearchSuppliers);
     on<FilterSuppliersByCategory>(_onFilterSuppliersByCategory);
@@ -101,39 +106,14 @@ class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
   ) async {
     emit(SupplierLoading());
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final suppliers = [
-      const Supplier(
-        id: '1',
-        name: 'AquaTech Solutions',
-        contactPerson: 'Rajesh Kumar',
-        city: 'New Delhi',
-        specialties: ['Dow Membranes', 'Booster Pumps'],
-        activePOs: 8,
-        status: 'active',
-      ),
-      const Supplier(
-        id: '2',
-        name: 'PureFlow Filtration Ltd.',
-        contactPerson: 'Amit Shah',
-        city: 'Mumbai',
-        specialties: ['Sediment Filters', 'Pre-Filters'],
-        activePOs: 3,
-        status: 'active',
-      ),
-      const Supplier(
-        id: '3',
-        name: 'Z-Electron Components',
-        contactPerson: 'Vikram Singh',
-        city: 'Bengaluru',
-        specialties: ['SMPS Adapters', 'Solenoid Valves'],
-        activePOs: 0,
-        status: 'inactive',
-      ),
-    ];
-
-    emit(SupplierLoaded(allSuppliers: suppliers, filteredSuppliers: suppliers));
+    try {
+      final suppliers = await repository.getSuppliers();
+      emit(
+        SupplierLoaded(allSuppliers: suppliers, filteredSuppliers: suppliers),
+      );
+    } catch (e) {
+      emit(SupplierError(e.toString()));
+    }
   }
 
   void _onSearchSuppliers(SearchSuppliers event, Emitter<SupplierState> emit) {

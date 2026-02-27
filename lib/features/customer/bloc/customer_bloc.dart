@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/customer.dart';
+import '../repositories/customer_repository.dart';
 
 // --- Events ---
 abstract class CustomerEvent extends Equatable {
@@ -71,7 +72,11 @@ class CustomerError extends CustomerState {
 
 // --- Bloc ---
 class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
-  CustomerBloc() : super(CustomerInitial()) {
+  final CustomerRepository repository;
+
+  CustomerBloc({CustomerRepository? repository})
+    : repository = repository ?? CustomerRepository(),
+      super(CustomerInitial()) {
     on<LoadCustomersRequested>(_onLoadCustomers);
     on<SearchCustomers>(_onSearchCustomers);
   }
@@ -82,50 +87,14 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
   ) async {
     emit(CustomerLoading());
 
-    // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Dummy data from React constants
-    final customers = [
-      const Customer(
-        id: '1',
-        name: 'Arjun Sharma',
-        phone: '+91 98765 43210',
-        model: 'Kent Grand+ RO (12L)',
-        status: 'Service Due',
-        lastService: '15 Oct 2023',
-        area: 'West Delhi',
-      ),
-      const Customer(
-        id: '2',
-        name: 'Priya Mehra',
-        phone: '+91 88223 11445',
-        model: 'Pureit Copper+ Mineral',
-        status: 'Operational',
-        lastService: '02 Jan 2024',
-        area: 'Rohini',
-      ),
-      const Customer(
-        id: '3',
-        name: 'Vikram Singh',
-        phone: '+91 70012 33490',
-        model: 'Aquaguard Ritz RO+UV',
-        status: 'AMC Plan',
-        lastService: '18 Dec 2023',
-        area: 'West Delhi',
-      ),
-      const Customer(
-        id: '4',
-        name: 'Sneha Kapoor',
-        phone: '+91 99112 22334',
-        model: 'Livpure Bolt (RO+UF)',
-        status: 'Pending Install',
-        lastService: 'New Customer',
-        area: 'Rohini',
-      ),
-    ];
-
-    emit(CustomerLoaded(allCustomers: customers, filteredCustomers: customers));
+    try {
+      final customers = await repository.getCustomers();
+      emit(
+        CustomerLoaded(allCustomers: customers, filteredCustomers: customers),
+      );
+    } catch (e) {
+      emit(CustomerError(e.toString()));
+    }
   }
 
   void _onSearchCustomers(SearchCustomers event, Emitter<CustomerState> emit) {

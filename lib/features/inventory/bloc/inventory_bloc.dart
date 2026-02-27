@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/inventory_item.dart';
+import '../repositories/inventory_repository.dart';
 
 // --- Events ---
 abstract class InventoryEvent extends Equatable {
@@ -89,7 +90,11 @@ class InventoryError extends InventoryState {
 
 // --- Bloc ---
 class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
-  InventoryBloc() : super(InventoryInitial()) {
+  final InventoryRepository repository;
+
+  InventoryBloc({InventoryRepository? repository})
+    : repository = repository ?? InventoryRepository(),
+      super(InventoryInitial()) {
     on<LoadInventoryRequested>(_onLoadInventory);
     on<SearchInventory>(_onSearchInventory);
     on<FilterInventoryByCategory>(_onFilterByCategory);
@@ -100,62 +105,12 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     Emitter<InventoryState> emit,
   ) async {
     emit(InventoryLoading());
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final items = [
-      const InventoryItem(
-        id: '1',
-        name: 'RO Membrane 75 GPD',
-        sku: 'RO-MEM-75',
-        supplier: 'Aquaflow',
-        price: 24.00,
-        stock: 4,
-        lowStockThreshold: 10,
-        category: 'Membranes',
-      ),
-      const InventoryItem(
-        id: '2',
-        name: 'Sediment Filter 5 Micron',
-        sku: 'SF-5M-01',
-        supplier: 'PureWater Corp',
-        price: 8.50,
-        stock: 42,
-        lowStockThreshold: 10,
-        category: 'Filters',
-      ),
-      const InventoryItem(
-        id: '3',
-        name: 'Booster Pump 100 GPD',
-        sku: 'BP-100G',
-        supplier: 'PowerFlow',
-        price: 45.00,
-        stock: 12,
-        lowStockThreshold: 5,
-        category: 'Pumps',
-      ),
-      const InventoryItem(
-        id: '4',
-        name: 'Activated Carbon Block',
-        sku: 'AC-BLK-09',
-        supplier: 'PureWater Corp',
-        price: 12.00,
-        stock: 2,
-        lowStockThreshold: 10,
-        category: 'Filters',
-      ),
-      const InventoryItem(
-        id: '5',
-        name: 'TDS Controller Valve',
-        sku: 'VAL-TDS-V',
-        supplier: 'Aquaflow',
-        price: 5.50,
-        stock: 85,
-        lowStockThreshold: 20,
-        category: 'Filters',
-      ),
-    ];
-
-    emit(InventoryLoaded(allItems: items, filteredItems: items));
+    try {
+      final items = await repository.getInventory();
+      emit(InventoryLoaded(allItems: items, filteredItems: items));
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
   }
 
   void _onSearchInventory(SearchInventory event, Emitter<InventoryState> emit) {
