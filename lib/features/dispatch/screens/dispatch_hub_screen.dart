@@ -4,6 +4,7 @@ import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../bloc/dispatch_bloc.dart';
 import '../models/service_request.dart';
+import 'add_service_request_bottom_sheet.dart';
 
 class DispatchHubScreen extends StatelessWidget {
   const DispatchHubScreen({super.key});
@@ -72,6 +73,25 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
           ),
           if (_showAssignPanel) _buildAssignPanel(),
         ],
+      ),
+      floatingActionButton: Builder(
+        builder: (context) {
+          return FloatingActionButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => BlocProvider.value(
+                  value: context.read<DispatchBloc>(),
+                  child: const AddServiceRequestBottomSheet(),
+                ),
+              );
+            },
+            backgroundColor: const Color(0xFF007FFF),
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          );
+        },
       ),
     );
   }

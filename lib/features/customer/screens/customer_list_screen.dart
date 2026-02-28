@@ -5,7 +5,8 @@ import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../bloc/customer_bloc.dart';
 import '../models/customer.dart';
-import 'customer_profile_screen.dart'; // Placeholder for next step
+import 'add_customer_bottom_sheet.dart';
+import 'customer_profile_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
   const CustomerListScreen({super.key});
@@ -58,18 +59,43 @@ class CustomerListScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip(
-                          'All Records',
-                          icon: Icons.filter_list,
-                          isSelected: true,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Service Due'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Area: West Delhi'),
-                      ],
+                    child: BlocBuilder<CustomerBloc, CustomerState>(
+                      builder: (context, state) {
+                        String currentFilter = 'All Records';
+                        if (state is CustomerLoaded) {
+                          currentFilter = state.currentFilter;
+                        }
+                        return Row(
+                          children: [
+                            _buildFilterChip(
+                              'All Records',
+                              icon: Icons.filter_list,
+                              isSelected: currentFilter == 'All Records',
+                              onTap: () => context.read<CustomerBloc>().add(
+                                const FilterCustomersRequested('All Records'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              'Service Due',
+                              isSelected: currentFilter == 'Service Due',
+                              onTap: () => context.read<CustomerBloc>().add(
+                                const FilterCustomersRequested('Service Due'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              'Area: West Delhi',
+                              isSelected: currentFilter == 'Area: West Delhi',
+                              onTap: () => context.read<CustomerBloc>().add(
+                                const FilterCustomersRequested(
+                                  'Area: West Delhi',
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -114,10 +140,28 @@ class CustomerListScreen extends StatelessWidget {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {},
-          backgroundColor: const Color(0xFF007FFF),
-          child: const Icon(Icons.person_add, size: 28),
+        floatingActionButton: Builder(
+          builder: (context) {
+            return FloatingActionButton(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => BlocProvider.value(
+                    value: context.read<CustomerBloc>(),
+                    child: const AddCustomerBottomSheet(),
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFF007FFF),
+              child: const Icon(
+                Icons.person_add,
+                size: 28,
+                color: Colors.white,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -127,36 +171,40 @@ class CustomerListScreen extends StatelessWidget {
     String label, {
     IconData? icon,
     bool isSelected = false,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF007FFF) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isSelected ? Colors.transparent : Colors.transparent,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? Colors.white : const Color(0xFF475569),
-            ),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFF475569),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF007FFF) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.transparent : Colors.transparent,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : const Color(0xFF475569),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

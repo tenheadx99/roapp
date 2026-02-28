@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../inventory/repositories/inventory_repository.dart';
+import '../../technician/repositories/technician_repository.dart';
 
 // --- Events ---
 abstract class InsightsEvent extends Equatable {
@@ -98,34 +100,66 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
 
   void _onLoadData(LoadInsightsData event, Emitter<InsightsState> emit) async {
     emit(InsightsLoading());
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final techRepo = TechnicianRepository();
+      final invRepo = InventoryRepository();
 
-    emit(
-      const InsightsLoaded(
-        activeTimeRange: 'Today',
-        revenue: 14290,
-        avgTat: 3.8,
-        salesTrends: {
-          'Mon': 40,
-          'Tue': 60,
-          'Wed': 55,
-          'Thu': 85,
-          'Fri': 100,
-          'Sat': 45,
-          'Sun': 30,
-        },
-        serviceLoad: [
-          {'name': 'Alex Johnson', 'tasks': 42, 'color': '#007fff'},
-          {'name': 'Maria Garcia', 'tasks': 28, 'color': '#007fff99'},
-          {'name': 'Sam Wilson', 'tasks': 15, 'color': '#007fff4d'},
-        ],
-        inventoryUsage: [
-          {'name': 'Sediment Filters', 'value': 65.0, 'color': '#007fff'},
-          {'name': 'RO Membranes', 'value': 25.0, 'color': '#007fff66'},
-          {'name': 'Others', 'value': 10.0, 'color': '#f1f5f9'},
-        ],
-      ),
-    );
+      final technicians = await techRepo.getTechnicians();
+      final inventory = await invRepo.getInventory();
+
+      var serviceLoad = technicians.map((t) {
+        return {'name': t.name, 'tasks': t.tasksToday, 'color': '#007fff'};
+      }).toList();
+
+      if (serviceLoad.isEmpty) {
+        serviceLoad = [
+          {'name': 'No Technicians', 'tasks': 0, 'color': '#007fff'},
+        ];
+      }
+
+      final Map<String, double> categoryStock = {};
+      int totalStock = 0;
+      for (var item in inventory) {
+        categoryStock[item.category] =
+            (categoryStock[item.category] ?? 0) + item.stock;
+        totalStock += item.stock;
+      }
+
+      var inventoryUsage = categoryStock.entries.map((e) {
+        return {
+          'name': e.key,
+          'value': totalStock > 0 ? (e.value / totalStock) * 100 : 0.0,
+          'color': '#007fff',
+        };
+      }).toList();
+
+      if (inventoryUsage.isEmpty) {
+        inventoryUsage = [
+          {'name': 'No Elements', 'value': 100.0, 'color': '#f1f5f9'},
+        ];
+      }
+
+      emit(
+        InsightsLoaded(
+          activeTimeRange: 'Today',
+          revenue: 14290,
+          avgTat: 3.8,
+          salesTrends: const {
+            'Mon': 40,
+            'Tue': 60,
+            'Wed': 55,
+            'Thu': 85,
+            'Fri': 100,
+            'Sat': 45,
+            'Sun': 30,
+          },
+          serviceLoad: serviceLoad,
+          inventoryUsage: inventoryUsage,
+        ),
+      );
+    } catch (e) {
+      emit(InsightsError(e.toString()));
+    }
   }
 
   void _onChangeTimeRange(ChangeTimeRange event, Emitter<InsightsState> emit) {

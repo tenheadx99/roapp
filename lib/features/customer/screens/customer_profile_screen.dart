@@ -7,45 +7,117 @@ import '../models/customer.dart';
 import '../models/service_history.dart';
 import '../repositories/customer_repository.dart';
 
-class CustomerProfileScreen extends StatelessWidget {
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../dispatch/bloc/dispatch_bloc.dart';
+import '../../dispatch/repositories/dispatch_repository.dart';
+import '../../dispatch/screens/add_service_request_bottom_sheet.dart';
+import '../bloc/customer_bloc.dart';
+import 'add_customer_bottom_sheet.dart';
+
+class CustomerProfileScreen extends StatefulWidget {
   final Customer customer;
 
   const CustomerProfileScreen({super.key, required this.customer});
 
   @override
+  State<CustomerProfileScreen> createState() => _CustomerProfileScreenState();
+}
+
+class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
+  int _selectedTabIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
-      appBar: AppBar(
-        title: const Text(
-          'Customer Profile',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildProfileCard(context),
-                _buildTabBar(),
-                _buildTabBar(),
-                _buildHistoryList(context),
+    return BlocProvider(
+      create: (context) => DispatchBloc(),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5F7F8),
+            appBar: AppBar(
+              title: const Text(
+                'Customer Profile',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              actions: [
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.black),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<CustomerBloc>(),
+                          child: AddCustomerBottomSheet(
+                            customerToEdit: widget.customer,
+                          ),
+                        ),
+                      );
+                    } else if (value == 'delete') {
+                      _showDeleteConfirmation(context);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 20, color: Colors.black54),
+                          SizedBox(width: 8),
+                          Text('Edit Customer'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text(
+                            'Delete Customer',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          ),
-          _buildBottomButton(),
-        ],
+            body: Stack(
+              children: [
+                SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildProfileCard(context),
+                      const SizedBox(height: 16),
+                      _buildTabBar(),
+                      _selectedTabIndex == 0
+                          ? _buildHistoryList(context)
+                          : _buildUpcomingList(context),
+                    ],
+                  ),
+                ),
+                _buildBottomButton(context),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -100,9 +172,12 @@ class CustomerProfileScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            HeaderText(text: customer.name, fontSize: 20),
+                            HeaderText(
+                              text: widget.customer.name,
+                              fontSize: 20,
+                            ),
                             SubRegularText(
-                              text: 'Customer ID: #${customer.id}',
+                              text: 'Customer ID: #${widget.customer.id}',
                             ),
                             const SizedBox(height: 8),
                             Container(
@@ -130,26 +205,7 @@ class CustomerProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code,
-                    size: 40,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
+                const SizedBox(),
               ],
             ),
             const SizedBox(height: 24),
@@ -175,7 +231,10 @@ class CustomerProfileScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        SemiBoldTextView(text: customer.model, fontSize: 14),
+                        SemiBoldTextView(
+                          text: widget.customer.model,
+                          fontSize: 14,
+                        ),
                       ],
                     ),
                   ),
@@ -189,10 +248,10 @@ class CustomerProfileScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey.shade100),
                     ),
-                    child: const Column(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'INSTALLED ON',
                           style: TextStyle(
                             fontSize: 10,
@@ -200,8 +259,11 @@ class CustomerProfileScreen extends StatelessWidget {
                             color: Color(0xFF94A3B8),
                           ),
                         ),
-                        SizedBox(height: 4),
-                        SemiBoldTextView(text: 'Mar 12, 2022', fontSize: 14),
+                        const SizedBox(height: 4),
+                        SemiBoldTextView(
+                          text: widget.customer.installationDate ?? 'N/A',
+                          fontSize: 14,
+                        ),
                       ],
                     ),
                   ),
@@ -214,7 +276,12 @@ class CustomerProfileScreen extends StatelessWidget {
                 Expanded(
                   child: CustomButton(
                     text: 'Call',
-                    onPressed: () {},
+                    onPressed: () async {
+                      final url = Uri.parse('tel:${widget.customer.phone}');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      }
+                    },
                     icon: const Icon(
                       Icons.phone,
                       size: 18,
@@ -228,7 +295,21 @@ class CustomerProfileScreen extends StatelessWidget {
                 Expanded(
                   child: CustomButton(
                     text: 'Locate',
-                    onPressed: () {},
+                    onPressed: () async {
+                      final url = Uri.parse(
+                        'geo:0,0?q=${Uri.encodeComponent(widget.customer.area)}',
+                      );
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      } else {
+                        final webUrl = Uri.parse(
+                          'https://maps.google.com/?q=${Uri.encodeComponent(widget.customer.area)}',
+                        );
+                        if (await canLaunchUrl(webUrl)) {
+                          await launchUrl(webUrl);
+                        }
+                      }
+                    },
                     icon: const Icon(
                       Icons.location_on,
                       size: 18,
@@ -241,18 +322,47 @@ class CustomerProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  height: 48,
-                  width: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.chat_bubble_outline,
-                      color: Color(0xFF334155),
-                      size: 18,
+                InkWell(
+                  onTap: () async {
+                    String phoneNum = widget.customer.phone.replaceAll(
+                      RegExp(r'[^\d+]'),
+                      '',
+                    );
+                    if (!phoneNum.startsWith('+')) {
+                      phoneNum = '+91$phoneNum'; // default formatting
+                    }
+                    final appUrl = Uri.parse('whatsapp://send?phone=$phoneNum');
+                    final webUrl = Uri.parse('https://wa.me/$phoneNum');
+
+                    try {
+                      if (await canLaunchUrl(appUrl)) {
+                        await launchUrl(
+                          appUrl,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } else {
+                        await launchUrl(
+                          webUrl,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint('Could not launch WhatsApp: $e');
+                    }
+                  },
+                  child: Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.whatsapp,
+                        color: Color(0xFF25D366),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
@@ -276,34 +386,69 @@ class CustomerProfileScreen extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedTabIndex = 0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _selectedTabIndex == 0
+                        ? Colors.white
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: _selectedTabIndex == 0
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Service History',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedTabIndex == 0
+                            ? Colors.black
+                            : const Color(0xFF64748B),
+                      ),
                     ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'Service History',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ),
-            const Expanded(
-              child: Center(
-                child: Text(
-                  'Upcoming',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF64748B),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedTabIndex = 1),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _selectedTabIndex == 1
+                        ? Colors.white
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: _selectedTabIndex == 1
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Upcoming',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedTabIndex == 1
+                            ? Colors.black
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -316,7 +461,7 @@ class CustomerProfileScreen extends StatelessWidget {
 
   Widget _buildHistoryList(BuildContext context) {
     return FutureBuilder<List<ServiceHistory>>(
-      future: CustomerRepository().getServiceHistory(customer.id),
+      future: CustomerRepository().getServiceHistory(widget.customer.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -325,7 +470,32 @@ class CustomerProfileScreen extends StatelessWidget {
           );
         }
 
-        final history = snapshot.data ?? [];
+        final fetchedHistory = snapshot.data ?? [];
+        final history = fetchedHistory.isNotEmpty
+            ? fetchedHistory
+            : [
+                ServiceHistory(
+                  id: 'dummy_1',
+                  customerId: widget.customer.id,
+                  date: 'Oct 15, 2023',
+                  type: 'Routine Maintenance',
+                  technicianName: 'Rajeesh Kumar',
+                  notes:
+                      'Replaced sediment filter and carbon filter. TDS at 50.',
+                  cost: 450.0,
+                  partsReplaced: 'Sediment Filter, Carbon Filter',
+                ),
+                ServiceHistory(
+                  id: 'dummy_2',
+                  customerId: widget.customer.id,
+                  date: 'May 02, 2023',
+                  type: 'Motor Repair',
+                  technicianName: 'Suresh Menon',
+                  notes: 'Motor was making noise, replaced under warranty.',
+                  cost: 1200.0,
+                  partsReplaced: 'RO Pump Motor 100GPD',
+                ),
+              ];
 
         return Padding(
           padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),
@@ -509,7 +679,7 @@ class CustomerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomButton() {
+  Widget _buildBottomButton(BuildContext scaffoldContext) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -534,9 +704,182 @@ class CustomerProfileScreen extends StatelessWidget {
             color: Colors.white,
             size: 20,
           ),
-          onPressed: () {},
+          onPressed: () async {
+            await showModalBottomSheet(
+              context: scaffoldContext,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => BlocProvider.value(
+                value: scaffoldContext.read<DispatchBloc>(),
+                child: AddServiceRequestBottomSheet(
+                  initialCustomerName: widget.customer.name,
+                  initialAddress: widget.customer.area,
+                  initialModel: widget.customer.model,
+                ),
+              ),
+            );
+            if (mounted) {
+              await Future.delayed(const Duration(milliseconds: 300));
+              if (mounted) setState(() {});
+            }
+          },
         ),
       ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Customer'),
+        content: const Text(
+          'Are you sure you want to delete this customer? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<CustomerBloc>().add(
+                DeleteCustomer(widget.customer.id),
+              );
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop(); // Go back to list
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingList(BuildContext context) {
+    return FutureBuilder(
+      future: DispatchRepository().getServiceRequestsByCustomerName(
+        widget.customer.name,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final requests = (snapshot.data ?? [])
+            .where((req) => req.status != 'completed')
+            .toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  'UPCOMING SCHEDULES',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF94A3B8),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+              if (requests.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text(
+                      'No upcoming schedules found.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: requests.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final req = requests[index];
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007FFF).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.event,
+                              color: Color(0xFF007FFF),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  req.type,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Scheduled for: \${req.time}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              req.status.toUpperCase(),
+                              style: TextStyle(
+                                color: Colors.orange.shade700,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

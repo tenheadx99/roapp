@@ -7,6 +7,7 @@ import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../bloc/supplier_bloc.dart';
 import '../models/supplier.dart';
+import 'add_supplier_bottom_sheet.dart';
 
 class SupplierDirectoryScreen extends StatelessWidget {
   const SupplierDirectoryScreen({super.key});
@@ -15,153 +16,171 @@ class SupplierDirectoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SupplierBloc()..add(LoadSuppliersRequested()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
-        appBar: AppBar(
-          title: const SemiBoldTextView(
-            text: AppStrings.supplierDirectory,
-            color: Colors.black,
-            fontSize: 16,
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-        body: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: BlocBuilder<SupplierBloc, SupplierState>(
-                builder: (context, state) {
-                  String selectedCategory = AppStrings.allSuppliers;
-                  if (state is SupplierLoaded) {
-                    selectedCategory = state.selectedCategory;
-                  }
-
-                  return Column(
-                    children: [
-                      CustomTextField(
-                        hintText: AppStrings.searchSuppliersHint,
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        onChanged: (val) {
-                          context.read<SupplierBloc>().add(
-                            SearchSuppliers(val),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildFilterChip(
-                              context,
-                              AppStrings.allSuppliers,
-                              isSelected:
-                                  selectedCategory == AppStrings.allSuppliers,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              context,
-                              AppStrings.membranes,
-                              isSelected:
-                                  selectedCategory == AppStrings.membranes,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              context,
-                              AppStrings.pumps,
-                              isSelected: selectedCategory == AppStrings.pumps,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              context,
-                              AppStrings.filters,
-                              isSelected:
-                                  selectedCategory == AppStrings.filters,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                },
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5F7F8),
+            appBar: AppBar(
+              title: const SemiBoldTextView(
+                text: AppStrings.supplierDirectory,
+                color: Colors.black,
+                fontSize: 16,
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ),
-            Expanded(
-              child: BlocBuilder<SupplierBloc, SupplierState>(
-                builder: (context, state) {
-                  if (state is SupplierLoading || state is SupplierInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is SupplierError) {
-                    return Center(child: Text(state.message));
-                  } else if (state is SupplierLoaded) {
-                    final suppliers = state.filteredSuppliers;
-                    if (suppliers.isEmpty) {
-                      return const Center(
-                        child: RegularTextView(
-                          text: AppStrings.noSuppliersFound,
-                        ),
-                      );
-                    }
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                          child: Text(
-                            '${AppStrings.verifiedPartners} (${suppliers.length})',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+            body: Column(
+              children: [
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: BlocBuilder<SupplierBloc, SupplierState>(
+                    builder: (context, state) {
+                      String selectedCategory = AppStrings.allSuppliers;
+                      if (state is SupplierLoaded) {
+                        selectedCategory = state.selectedCategory;
+                      }
+
+                      return Column(
+                        children: [
+                          CustomTextField(
+                            hintText: AppStrings.searchSuppliersHint,
+                            prefixIcon: const Icon(
+                              Icons.search,
                               color: Color(0xFF94A3B8),
-                              letterSpacing: 1,
                             ),
-                          ),
-                        ),
-                        Expanded(
-                          child: ListView.separated(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ).copyWith(bottom: 80),
-                            itemCount: suppliers.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              return _SupplierCard(supplier: suppliers[index]);
+                            onChanged: (val) {
+                              context.read<SupplierBloc>().add(
+                                SearchSuppliers(val),
+                              );
                             },
                           ),
-                        ),
-                      ],
-                    );
-                  }
-                  return const SizedBox();
-                },
+                          const SizedBox(height: 12),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _buildFilterChip(
+                                  context,
+                                  AppStrings.allSuppliers,
+                                  isSelected:
+                                      selectedCategory ==
+                                      AppStrings.allSuppliers,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  AppStrings.membranes,
+                                  isSelected:
+                                      selectedCategory == AppStrings.membranes,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  AppStrings.pumps,
+                                  isSelected:
+                                      selectedCategory == AppStrings.pumps,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  AppStrings.filters,
+                                  isSelected:
+                                      selectedCategory == AppStrings.filters,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: BlocBuilder<SupplierBloc, SupplierState>(
+                    builder: (context, state) {
+                      if (state is SupplierLoading ||
+                          state is SupplierInitial) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (state is SupplierError) {
+                        return Center(child: Text(state.message));
+                      } else if (state is SupplierLoaded) {
+                        final suppliers = state.filteredSuppliers;
+                        if (suppliers.isEmpty) {
+                          return const Center(
+                            child: RegularTextView(
+                              text: AppStrings.noSuppliersFound,
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Text(
+                                '${AppStrings.verifiedPartners} (${suppliers.length})',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF94A3B8),
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView.separated(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ).copyWith(bottom: 80),
+                                itemCount: suppliers.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  return _SupplierCard(
+                                    supplier: suppliers[index],
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => BlocProvider.value(
+                    value: context.read<SupplierBloc>(),
+                    child: const AddSupplierBottomSheet(),
+                  ),
+                );
+              },
+              backgroundColor: const Color(0xFF007FFF),
+              icon: const Icon(Icons.add, size: 20, color: Colors.white),
+              label: const SemiBoldTextView(
+                text: 'Add Supplier',
+                color: Colors.white,
               ),
             ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(AppStrings.comingSoon)),
-            );
-          },
-          backgroundColor: const Color(0xFF007FFF),
-          icon: const Icon(Icons.add, size: 20),
-          label: const SemiBoldTextView(
-            text: AppStrings.newPO,
-            color: Colors.white,
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -267,6 +286,35 @@ class _SupplierCard extends StatelessWidget {
                 ),
                 Row(
                   children: [
+                    InkWell(
+                      onTap: () {
+                        final bloc = context.read<SupplierBloc>();
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => BlocProvider.value(
+                            value: bloc,
+                            child: AddSupplierBottomSheet(
+                              supplierToEdit: supplier,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.edit_outlined,
+                          color: Colors.blue.shade600,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     InkWell(
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(

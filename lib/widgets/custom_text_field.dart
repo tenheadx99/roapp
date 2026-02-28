@@ -7,6 +7,7 @@ class CustomTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final String? initialValue;
   final ValueChanged<String>? onChanged;
+  final bool readOnly;
 
   const CustomTextField({
     super.key,
@@ -16,6 +17,7 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.initialValue,
     this.onChanged,
+    this.readOnly = false,
   });
 
   @override
@@ -24,9 +26,10 @@ class CustomTextField extends StatelessWidget {
       initialValue: initialValue,
       obscureText: obscureText,
       onChanged: onChanged,
-      style: const TextStyle(
+      readOnly: readOnly,
+      style: TextStyle(
         fontSize: 16,
-        color: Color(0xFF0F172A), // slate-900
+        color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),
       ),
       decoration: InputDecoration(
         hintText: hintText,

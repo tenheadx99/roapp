@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
+import '../../supplier/screens/supplier_directory_screen.dart';
 import '../bloc/inventory_bloc.dart';
 import '../models/inventory_item.dart';
+import 'add_inventory_item_bottom_sheet.dart';
 
 class InventoryScreen extends StatelessWidget {
   const InventoryScreen({super.key});
@@ -13,185 +15,213 @@ class InventoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => InventoryBloc()..add(LoadInventoryRequested()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
-        appBar: AppBar(
-          title: const Text(
-            'Parts & Filters',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: TextButton(
-                  onPressed: () {
-                    // Navigate to suppliers
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Manage Suppliers',
-                    style: TextStyle(
-                      color: Color(0xFF007FFF),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5F7F8),
+            appBar: AppBar(
+              title: const Text(
+                'Parts & Filters',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SupplierDirectoryScreen(),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Manage Suppliers',
+                        style: TextStyle(
+                          color: Color(0xFF007FFF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-        body: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                children: [
-                  Row(
+            body: Column(
+              children: [
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Column(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007FFF).withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.upload_outlined,
-                          color: Color(0xFF007FFF),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007FFF),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF007FFF).withOpacity(0.2),
-                              blurRadius: 8,
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007FFF).withOpacity(0.1),
+                              shape: BoxShape.circle,
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 20,
+                            child: const Icon(
+                              Icons.upload_outlined,
+                              color: Color(0xFF007FFF),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (builderContext) => BlocProvider.value(
+                                  value: context.read<InventoryBloc>(),
+                                  child: const AddInventoryItemBottomSheet(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF007FFF),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF007FFF,
+                                    ).withOpacity(0.2),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      BlocBuilder<InventoryBloc, InventoryState>(
+                        builder: (context, state) {
+                          return CustomTextField(
+                            hintText: "Search SKU or item name...",
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            onChanged: (val) {
+                              context.read<InventoryBloc>().add(
+                                SearchInventory(val),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 36,
+                        child: BlocBuilder<InventoryBloc, InventoryState>(
+                          builder: (context, state) {
+                            String currentCategory = 'All';
+                            if (state is InventoryLoaded) {
+                              currentCategory = state.selectedCategory;
+                            }
+
+                            final categories = [
+                              'All',
+                              'Pumps',
+                              'Membranes',
+                              'Filters',
+                              'UV Lamps',
+                            ];
+
+                            return ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: categories.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final cat = categories[index];
+                                final isSelected = cat == currentCategory;
+                                return GestureDetector(
+                                  onTap: () {
+                                    context.read<InventoryBloc>().add(
+                                      FilterInventoryByCategory(cat),
+                                    );
+                                  },
+                                  child: _buildCategoryChip(
+                                    cat,
+                                    isSelected: isSelected,
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  BlocBuilder<InventoryBloc, InventoryState>(
+                ),
+                Expanded(
+                  child: BlocBuilder<InventoryBloc, InventoryState>(
                     builder: (context, state) {
-                      return CustomTextField(
-                        hintText: "Search SKU or item name...",
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        onChanged: (val) {
-                          context.read<InventoryBloc>().add(
-                            SearchInventory(val),
+                      if (state is InventoryLoading ||
+                          state is InventoryInitial) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (state is InventoryError) {
+                        return Center(child: Text(state.message));
+                      } else if (state is InventoryLoaded) {
+                        final items = state.filteredItems;
+                        if (items.isEmpty) {
+                          return const Center(
+                            child: Text('No inventory items found.'),
                           );
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 36,
-                    child: BlocBuilder<InventoryBloc, InventoryState>(
-                      builder: (context, state) {
-                        String currentCategory = 'All';
-                        if (state is InventoryLoaded) {
-                          currentCategory = state.selectedCategory;
                         }
-
-                        final categories = [
-                          'All',
-                          'Pumps',
-                          'Membranes',
-                          'Filters',
-                          'UV Lamps',
-                        ];
-
                         return ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: categories.length,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: items.length,
                           separatorBuilder: (context, index) =>
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final cat = categories[index];
-                            final isSelected = cat == currentCategory;
-                            return GestureDetector(
-                              onTap: () {
-                                context.read<InventoryBloc>().add(
-                                  FilterInventoryByCategory(cat),
-                                );
-                              },
-                              child: _buildCategoryChip(
-                                cat,
-                                isSelected: isSelected,
-                              ),
-                            );
+                            return _InventoryCard(item: items[index]);
                           },
                         );
-                      },
-                    ),
+                      }
+                      return const SizedBox();
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Expanded(
-              child: BlocBuilder<InventoryBloc, InventoryState>(
-                builder: (context, state) {
-                  if (state is InventoryLoading || state is InventoryInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is InventoryError) {
-                    return Center(child: Text(state.message));
-                  } else if (state is InventoryLoaded) {
-                    final items = state.filteredItems;
-                    if (items.isEmpty) {
-                      return const Center(
-                        child: Text('No inventory items found.'),
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: items.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        return _InventoryCard(item: items[index]);
-                      },
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -303,22 +333,35 @@ class _InventoryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Row(
-                children: [
-                  const Text(
-                    'Details',
-                    style: TextStyle(
-                      color: Color(0xFF007FFF),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (builderContext) => BlocProvider.value(
+                      value: context.read<InventoryBloc>(),
+                      child: AddInventoryItemBottomSheet(itemToEdit: item),
                     ),
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: Color(0xFF007FFF),
-                    size: 16,
-                  ),
-                ],
+                  );
+                },
+                child: Row(
+                  children: [
+                    const Text(
+                      'Details',
+                      style: TextStyle(
+                        color: Color(0xFF007FFF),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFF007FFF),
+                      size: 16,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

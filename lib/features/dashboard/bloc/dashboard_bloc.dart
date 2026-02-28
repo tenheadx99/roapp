@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../customer/repositories/customer_repository.dart';
+import '../../dispatch/repositories/dispatch_repository.dart';
+import '../../inventory/repositories/inventory_repository.dart';
 
 // --- Events ---
 abstract class DashboardEvent extends Equatable {
@@ -54,41 +57,63 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Emitter<DashboardState> emit,
   ) async {
     emit(DashboardLoading());
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
 
-    // Dummy data matching React DashboardScreen
-    final stats = {
-      'totalInventory': '142',
-      'pendingService': '12',
-      'totalCustomers': '850',
-      'lowStock': '3',
-    };
+    try {
+      final customerRepo = CustomerRepository();
+      final inventoryRepo = InventoryRepository();
+      final dispatchRepo = DispatchRepository();
 
-    final activities = [
-      {
-        'id': 1,
-        'title': 'Service Completed',
-        'desc': 'RO Maintenance: John Doe',
-        'time': '2 mins ago',
-        'color': 'green',
-      },
-      {
-        'id': 2,
-        'title': 'New Customer',
-        'desc': 'Riverside Apt • Block B-402',
-        'time': '1 hour ago',
-        'color': 'blue',
-      },
-      {
-        'id': 3,
-        'title': 'Maintenance Scheduled',
-        'desc': 'Filter Change: Sarah Smith',
-        'time': '3 hours ago',
-        'color': 'orange',
-      },
-    ];
+      final customers = await customerRepo.getCustomers();
+      final inventoryItems = await inventoryRepo.getInventory();
+      final requests = await dispatchRepo.getServiceRequests();
 
-    emit(DashboardLoaded(stats, activities));
+      final totalCustomers = customers.length;
+      final totalInventory = inventoryItems.fold<int>(
+        0,
+        (sum, item) => sum + item.stock,
+      );
+      final lowStock = inventoryItems
+          .where((item) => item.stock <= item.lowStockThreshold)
+          .length;
+      final pendingService = requests
+          .where((req) => req.status == 'Pending')
+          .length;
+
+      final stats = {
+        'totalInventory': totalInventory.toString(),
+        'pendingService': pendingService.toString(),
+        'totalCustomers': totalCustomers.toString(),
+        'lowStock': lowStock.toString(),
+      };
+
+      var activities = requests
+          .take(3)
+          .map(
+            (req) => {
+              'id': req.id.hashCode,
+              'title': '${req.type} Request',
+              'desc': req.customerName,
+              'time': req.time,
+              'color': req.status == 'Completed' ? 'green' : 'orange',
+            },
+          )
+          .toList();
+
+      if (activities.isEmpty) {
+        activities = [
+          {
+            'id': 1,
+            'title': 'System Started',
+            'desc': 'No recent activity yet.',
+            'time': 'Just now',
+            'color': 'blue',
+          },
+        ];
+      }
+
+      emit(DashboardLoaded(stats, activities));
+    } catch (e) {
+      emit(DashboardError(e.toString()));
+    }
   }
 }

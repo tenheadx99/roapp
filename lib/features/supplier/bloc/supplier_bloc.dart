@@ -31,6 +31,27 @@ class FilterSuppliersByCategory extends SupplierEvent {
   List<Object?> get props => [category];
 }
 
+class AddSupplier extends SupplierEvent {
+  final Supplier supplier;
+  const AddSupplier(this.supplier);
+  @override
+  List<Object?> get props => [supplier];
+}
+
+class UpdateSupplier extends SupplierEvent {
+  final Supplier supplier;
+  const UpdateSupplier(this.supplier);
+  @override
+  List<Object?> get props => [supplier];
+}
+
+class DeleteSupplier extends SupplierEvent {
+  final String supplierId;
+  const DeleteSupplier(this.supplierId);
+  @override
+  List<Object?> get props => [supplierId];
+}
+
 // --- States ---
 abstract class SupplierState extends Equatable {
   const SupplierState();
@@ -98,6 +119,9 @@ class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
     on<LoadSuppliersRequested>(_onLoadSuppliers);
     on<SearchSuppliers>(_onSearchSuppliers);
     on<FilterSuppliersByCategory>(_onFilterSuppliersByCategory);
+    on<AddSupplier>(_onAddSupplier);
+    on<UpdateSupplier>(_onUpdateSupplier);
+    on<DeleteSupplier>(_onDeleteSupplier);
   }
 
   void _onLoadSuppliers(
@@ -171,5 +195,38 @@ class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
 
       return matchesSearch && matchesCategory;
     }).toList();
+  }
+
+  void _onAddSupplier(AddSupplier event, Emitter<SupplierState> emit) async {
+    try {
+      await repository.addSupplier(event.supplier);
+      add(LoadSuppliersRequested());
+    } catch (e) {
+      emit(SupplierError(e.toString()));
+    }
+  }
+
+  void _onUpdateSupplier(
+    UpdateSupplier event,
+    Emitter<SupplierState> emit,
+  ) async {
+    try {
+      await repository.updateSupplier(event.supplier);
+      add(LoadSuppliersRequested());
+    } catch (e) {
+      emit(SupplierError(e.toString()));
+    }
+  }
+
+  void _onDeleteSupplier(
+    DeleteSupplier event,
+    Emitter<SupplierState> emit,
+  ) async {
+    try {
+      await repository.deleteSupplier(event.supplierId);
+      add(LoadSuppliersRequested());
+    } catch (e) {
+      emit(SupplierError(e.toString()));
+    }
   }
 }

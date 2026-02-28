@@ -25,6 +25,19 @@ class DispatchRepository {
     return null;
   }
 
+  Future<List<ServiceRequest>> getServiceRequestsByCustomerName(
+    String name,
+  ) async {
+    final db = await dbHelper.database;
+    final maps = await db.query(
+      'service_requests',
+      where: 'customerName = ?',
+      whereArgs: [name],
+      orderBy: 'time ASC',
+    );
+    return maps.map((e) => ServiceRequest.fromMap(e)).toList();
+  }
+
   Future<void> addServiceRequest(ServiceRequest request) async {
     final db = await dbHelper.database;
     await db.insert('service_requests', request.toMap());

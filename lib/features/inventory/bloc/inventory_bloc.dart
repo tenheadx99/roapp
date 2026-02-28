@@ -31,6 +31,27 @@ class FilterInventoryByCategory extends InventoryEvent {
   List<Object?> get props => [category];
 }
 
+class AddInventoryItem extends InventoryEvent {
+  final InventoryItem item;
+  const AddInventoryItem(this.item);
+  @override
+  List<Object?> get props => [item];
+}
+
+class UpdateInventoryItem extends InventoryEvent {
+  final InventoryItem item;
+  const UpdateInventoryItem(this.item);
+  @override
+  List<Object?> get props => [item];
+}
+
+class DeleteInventoryItem extends InventoryEvent {
+  final String itemId;
+  const DeleteInventoryItem(this.itemId);
+  @override
+  List<Object?> get props => [itemId];
+}
+
 // --- States ---
 abstract class InventoryState extends Equatable {
   const InventoryState();
@@ -98,6 +119,9 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     on<LoadInventoryRequested>(_onLoadInventory);
     on<SearchInventory>(_onSearchInventory);
     on<FilterInventoryByCategory>(_onFilterByCategory);
+    on<AddInventoryItem>(_onAddInventoryItem);
+    on<UpdateInventoryItem>(_onUpdateInventoryItem);
+    on<DeleteInventoryItem>(_onDeleteInventoryItem);
   }
 
   void _onLoadInventory(
@@ -163,5 +187,41 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           item.sku.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
+  }
+
+  void _onAddInventoryItem(
+    AddInventoryItem event,
+    Emitter<InventoryState> emit,
+  ) async {
+    try {
+      await repository.addInventoryItem(event.item);
+      add(LoadInventoryRequested());
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
+  }
+
+  void _onUpdateInventoryItem(
+    UpdateInventoryItem event,
+    Emitter<InventoryState> emit,
+  ) async {
+    try {
+      await repository.updateInventoryItem(event.item);
+      add(LoadInventoryRequested());
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
+  }
+
+  void _onDeleteInventoryItem(
+    DeleteInventoryItem event,
+    Emitter<InventoryState> emit,
+  ) async {
+    try {
+      await repository.deleteInventoryItem(event.itemId);
+      add(LoadInventoryRequested());
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
   }
 }

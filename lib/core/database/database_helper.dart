@@ -44,7 +44,9 @@ CREATE TABLE customers (
   model $textType,
   status $textType,
   lastService $textType,
-  area $textType
+  area $textType,
+  installationDate $textNullType,
+  upcomingServiceDate $textNullType
 )
 ''');
 
@@ -125,6 +127,8 @@ CREATE TABLE service_history (
       'status': 'Service Due',
       'lastService': '15 Oct 2023',
       'area': 'West Delhi',
+      'installationDate': '12 Mar 2022',
+      'upcomingServiceDate': '15 Apr 2024',
     });
     await db.insert('customers', {
       'id': '2',
@@ -134,6 +138,8 @@ CREATE TABLE service_history (
       'status': 'Operational',
       'lastService': '02 Jan 2024',
       'area': 'Rohini',
+      'installationDate': '05 Jun 2023',
+      'upcomingServiceDate': '02 Jul 2024',
     });
 
     // Service History for Customer 1

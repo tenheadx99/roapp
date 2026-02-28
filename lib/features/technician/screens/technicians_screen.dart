@@ -13,143 +13,160 @@ class TechniciansScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => TechnicianBloc()..add(LoadTechnicians()),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
-        appBar: AppBar(
-          title: const Text(
-            'Technicians',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5F7F8),
+            appBar: AppBar(
+              title: const Text(
+                'Technicians',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             ),
-          ),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-        body: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            body: Column(
+              children: [
+                Container(
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '12 Active Team Members',
-                        style: TextStyle(
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007FFF),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF007FFF).withOpacity(0.2),
-                              blurRadius: 8,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            '12 Active Team Members',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person_add_alt_1,
-                          color: Colors.white,
-                          size: 20,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF007FFF),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF007FFF,
+                                  ).withOpacity(0.2),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.person_add_alt_1,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      BlocBuilder<TechnicianBloc, TechnicianState>(
+                        builder: (context, state) {
+                          return CustomTextField(
+                            hintText: "Search name or region...",
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            onChanged: (val) {
+                              context.read<TechnicianBloc>().add(
+                                SearchTechnicians(val),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: BlocBuilder<TechnicianBloc, TechnicianState>(
+                          builder: (context, state) {
+                            String activeFilter = 'All';
+                            if (state is TechnicianLoaded) {
+                              activeFilter = state.activeFilter;
+                            }
+                            return Row(
+                              children: [
+                                _buildFilterChip(context, 'All', activeFilter),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  'North District',
+                                  activeFilter,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  'Downtown',
+                                  activeFilter,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  context,
+                                  'Industrial Park',
+                                  activeFilter,
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  BlocBuilder<TechnicianBloc, TechnicianState>(
+                ),
+                Expanded(
+                  child: BlocBuilder<TechnicianBloc, TechnicianState>(
                     builder: (context, state) {
-                      return CustomTextField(
-                        hintText: "Search name or region...",
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        onChanged: (val) {
-                          context.read<TechnicianBloc>().add(
-                            SearchTechnicians(val),
+                      if (state is TechnicianLoading ||
+                          state is TechnicianInitial) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (state is TechnicianError) {
+                        return Center(child: Text(state.message));
+                      } else if (state is TechnicianLoaded) {
+                        final techs = state.filteredTechnicians;
+                        if (techs.isEmpty) {
+                          return const Center(
+                            child: Text('No technicians found.'),
                           );
-                        },
-                      );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(
+                            16,
+                          ).copyWith(bottom: 24),
+                          itemCount: techs.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            return _buildTechCard(techs[index]);
+                          },
+                        );
+                      }
+                      return const SizedBox();
                     },
                   ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: BlocBuilder<TechnicianBloc, TechnicianState>(
-                      builder: (context, state) {
-                        String activeFilter = 'All';
-                        if (state is TechnicianLoaded) {
-                          activeFilter = state.activeFilter;
-                        }
-                        return Row(
-                          children: [
-                            _buildFilterChip(context, 'All', activeFilter),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              context,
-                              'North District',
-                              activeFilter,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(context, 'Downtown', activeFilter),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              context,
-                              'Industrial Park',
-                              activeFilter,
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Expanded(
-              child: BlocBuilder<TechnicianBloc, TechnicianState>(
-                builder: (context, state) {
-                  if (state is TechnicianLoading ||
-                      state is TechnicianInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is TechnicianError) {
-                    return Center(child: Text(state.message));
-                  } else if (state is TechnicianLoaded) {
-                    final techs = state.filteredTechnicians;
-                    if (techs.isEmpty) {
-                      return const Center(child: Text('No technicians found.'));
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16).copyWith(bottom: 24),
-                      itemCount: techs.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        return _buildTechCard(techs[index]);
-                      },
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

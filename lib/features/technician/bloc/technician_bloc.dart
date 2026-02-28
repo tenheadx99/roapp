@@ -31,6 +31,27 @@ class FilterTechnicians extends TechnicianEvent {
   List<Object?> get props => [filter];
 }
 
+class AddTechnician extends TechnicianEvent {
+  final Technician technician;
+  const AddTechnician(this.technician);
+  @override
+  List<Object?> get props => [technician];
+}
+
+class UpdateTechnician extends TechnicianEvent {
+  final Technician technician;
+  const UpdateTechnician(this.technician);
+  @override
+  List<Object?> get props => [technician];
+}
+
+class DeleteTechnician extends TechnicianEvent {
+  final String technicianId;
+  const DeleteTechnician(this.technicianId);
+  @override
+  List<Object?> get props => [technicianId];
+}
+
 // --- States ---
 abstract class TechnicianState extends Equatable {
   const TechnicianState();
@@ -98,6 +119,9 @@ class TechnicianBloc extends Bloc<TechnicianEvent, TechnicianState> {
     on<LoadTechnicians>(_onLoadTechnicians);
     on<SearchTechnicians>(_onSearchTechnicians);
     on<FilterTechnicians>(_onFilterTechnicians);
+    on<AddTechnician>(_onAddTechnician);
+    on<UpdateTechnician>(_onUpdateTechnician);
+    on<DeleteTechnician>(_onDeleteTechnician);
   }
 
   void _onLoadTechnicians(
@@ -176,5 +200,41 @@ class TechnicianBloc extends Bloc<TechnicianEvent, TechnicianState> {
       final matchesFilter = filter == 'All' || t.region == filter;
       return matchesQuery && matchesFilter;
     }).toList();
+  }
+
+  void _onAddTechnician(
+    AddTechnician event,
+    Emitter<TechnicianState> emit,
+  ) async {
+    try {
+      await repository.addTechnician(event.technician);
+      add(LoadTechnicians());
+    } catch (e) {
+      emit(TechnicianError(e.toString()));
+    }
+  }
+
+  void _onUpdateTechnician(
+    UpdateTechnician event,
+    Emitter<TechnicianState> emit,
+  ) async {
+    try {
+      await repository.updateTechnician(event.technician);
+      add(LoadTechnicians());
+    } catch (e) {
+      emit(TechnicianError(e.toString()));
+    }
+  }
+
+  void _onDeleteTechnician(
+    DeleteTechnician event,
+    Emitter<TechnicianState> emit,
+  ) async {
+    try {
+      await repository.deleteTechnician(event.technicianId);
+      add(LoadTechnicians());
+    } catch (e) {
+      emit(TechnicianError(e.toString()));
+    }
   }
 }

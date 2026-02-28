@@ -9,6 +9,8 @@ class Customer extends Equatable {
   status; // 'Service Due' | 'Operational' | 'AMC Plan' | 'Pending Install'
   final String lastService;
   final String area;
+  final String? installationDate;
+  final String? upcomingServiceDate;
 
   const Customer({
     required this.id,
@@ -18,6 +20,8 @@ class Customer extends Equatable {
     required this.status,
     required this.lastService,
     required this.area,
+    this.installationDate,
+    this.upcomingServiceDate,
   });
 
   factory Customer.fromMap(Map<String, dynamic> map) {
@@ -29,6 +33,8 @@ class Customer extends Equatable {
       status: map['status'] as String,
       lastService: map['lastService'] as String,
       area: map['area'] as String,
+      installationDate: map['installationDate'] as String?,
+      upcomingServiceDate: map['upcomingServiceDate'] as String?,
     );
   }
 
@@ -41,6 +47,8 @@ class Customer extends Equatable {
       'status': status,
       'lastService': lastService,
       'area': area,
+      'installationDate': installationDate,
+      'upcomingServiceDate': upcomingServiceDate,
     };
   }
 
@@ -53,5 +61,7 @@ class Customer extends Equatable {
     status,
     lastService,
     area,
+    installationDate,
+    upcomingServiceDate,
   ];
 }
