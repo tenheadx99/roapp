@@ -1,4 +1,7 @@
-import 'package:sqflite/sqflite.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
@@ -9,8 +12,18 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
+    await _initializeDatabaseFactory();
     _database = await _initDB('roapp_private.db');
     return _database!;
+  }
+
+  Future<void> _initializeDatabaseFactory() async {
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    } else if (Platform.isLinux || Platform.isWindows) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
   }
 
   Future<Database> _initDB(String filePath) async {

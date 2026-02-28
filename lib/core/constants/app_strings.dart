@@ -56,4 +56,6 @@ class AppStrings {
   static const String viewPurchaseOrders = "View Purchase Orders";
   static const String reorder = "Reorder";
   static const String comingSoon = "Coming Soon";
+  static const String addSupplier = 'Add Supplier';
+  static const String add = 'Add';
 }
