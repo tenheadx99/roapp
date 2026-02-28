@@ -6,6 +6,7 @@ import '../../../widgets/sub_regular_text.dart';
 import '../bloc/customer_bloc.dart';
 import '../models/customer.dart';
 import 'add_customer_bottom_sheet.dart';
+import '../../../widgets/responsive_layout.dart';
 import 'customer_profile_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
@@ -33,112 +34,9 @@ class CustomerListScreen extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(), // Placeholder
           ),
         ),
-        body: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                children: [
-                  BlocBuilder<CustomerBloc, CustomerState>(
-                    builder: (context, state) {
-                      return CustomTextField(
-                        hintText: "Search by name, contact, or model...",
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        onChanged: (val) {
-                          context.read<CustomerBloc>().add(
-                            SearchCustomers(val),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: BlocBuilder<CustomerBloc, CustomerState>(
-                      builder: (context, state) {
-                        String currentFilter = 'All Records';
-                        if (state is CustomerLoaded) {
-                          currentFilter = state.currentFilter;
-                        }
-                        return Row(
-                          children: [
-                            _buildFilterChip(
-                              'All Records',
-                              icon: Icons.filter_list,
-                              isSelected: currentFilter == 'All Records',
-                              onTap: () => context.read<CustomerBloc>().add(
-                                const FilterCustomersRequested('All Records'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              'Service Due',
-                              isSelected: currentFilter == 'Service Due',
-                              onTap: () => context.read<CustomerBloc>().add(
-                                const FilterCustomersRequested('Service Due'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildFilterChip(
-                              'Area: West Delhi',
-                              isSelected: currentFilter == 'Area: West Delhi',
-                              onTap: () => context.read<CustomerBloc>().add(
-                                const FilterCustomersRequested(
-                                  'Area: West Delhi',
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: BlocBuilder<CustomerBloc, CustomerState>(
-                builder: (context, state) {
-                  if (state is CustomerLoading || state is CustomerInitial) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is CustomerError) {
-                    return Center(child: Text(state.message));
-                  } else if (state is CustomerLoaded) {
-                    final customers = state.filteredCustomers;
-                    if (customers.isEmpty) {
-                      return const Center(child: Text('No customers found.'));
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: customers.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        return _CustomerCard(
-                          customer: customers[index],
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => CustomerProfileScreen(
-                                  customer: customers[index],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  }
-                  return const SizedBox();
-                },
-              ),
-            ),
-          ],
+        body: const ResponsiveLayout(
+          mobile: _MobileCustomerView(),
+          desktop: _DesktopCustomerView(),
         ),
         floatingActionButton: Builder(
           builder: (context) {
@@ -166,48 +64,254 @@ class CustomerListScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildFilterChip(
-    String label, {
-    IconData? icon,
-    bool isSelected = false,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF007FFF) : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.transparent : Colors.transparent,
+class _MobileCustomerView extends StatelessWidget {
+  const _MobileCustomerView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            children: [
+              _buildSearchField(context),
+              const SizedBox(height: 12),
+              _buildFilterSection(context),
+            ],
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 14,
-                color: isSelected ? Colors.white : const Color(0xFF475569),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : const Color(0xFF475569),
-              ),
-            ),
-          ],
-        ),
-      ),
+        Expanded(child: _buildCustomerList(context, isDesktop: false)),
+      ],
     );
   }
+}
+
+class _DesktopCustomerView extends StatelessWidget {
+  const _DesktopCustomerView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Sidebar for filters
+        Container(
+          width: 280,
+          color: Colors.white,
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SemiBoldTextView(text: 'Search', fontSize: 18),
+              const SizedBox(height: 16),
+              _buildSearchField(context),
+              const SizedBox(height: 32),
+              const SemiBoldTextView(text: 'Categories', fontSize: 18),
+              const SizedBox(height: 16),
+              Expanded(child: _buildFilterSection(context, isVertical: true)),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+        // Main content area
+        Expanded(
+          child: Container(
+            color: const Color(0xFFF8FAFC),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SemiBoldTextView(
+                  text: 'Customer Directory',
+                  fontSize: 20,
+                ),
+                const SizedBox(height: 24),
+                Expanded(child: _buildCustomerList(context, isDesktop: true)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _buildSearchField(BuildContext context) {
+  return BlocBuilder<CustomerBloc, CustomerState>(
+    builder: (context, state) {
+      return CustomTextField(
+        hintText: "Search by name, contact, or model...",
+        prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
+        onChanged: (val) {
+          context.read<CustomerBloc>().add(SearchCustomers(val));
+        },
+      );
+    },
+  );
+}
+
+Widget _buildFilterSection(BuildContext context, {bool isVertical = false}) {
+  return BlocBuilder<CustomerBloc, CustomerState>(
+    builder: (context, state) {
+      String currentFilter = 'All Records';
+      if (state is CustomerLoaded) {
+        currentFilter = state.currentFilter;
+      }
+
+      final filters = [
+        {'label': 'All Records', 'icon': Icons.filter_list},
+        {'label': 'Service Due', 'icon': null},
+        {'label': 'Area: West Delhi', 'icon': null},
+      ];
+
+      if (isVertical) {
+        return ListView.separated(
+          itemCount: filters.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final filter = filters[index];
+            final label = filter['label'] as String;
+            final isSelected = label == currentFilter;
+            return _buildFilterChip(
+              label,
+              isSelected: isSelected,
+              isFullWidth: true,
+              onTap: () => context.read<CustomerBloc>().add(
+                FilterCustomersRequested(label),
+              ),
+            );
+          },
+        );
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: filters.map((filter) {
+            final label = filter['label'] as String;
+            final isSelected = label == currentFilter;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: _buildFilterChip(
+                label,
+                icon: filter['icon'] as IconData?,
+                isSelected: isSelected,
+                onTap: () => context.read<CustomerBloc>().add(
+                  FilterCustomersRequested(label),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
+  return BlocBuilder<CustomerBloc, CustomerState>(
+    builder: (context, state) {
+      if (state is CustomerLoading || state is CustomerInitial) {
+        return const Center(child: CircularProgressIndicator());
+      } else if (state is CustomerError) {
+        return Center(child: Text(state.message));
+      } else if (state is CustomerLoaded) {
+        final customers = state.filteredCustomers;
+        if (customers.isEmpty) {
+          return const Center(child: Text('No customers found.'));
+        }
+
+        if (isDesktop) {
+          return GridView.builder(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 400,
+              mainAxisExtent: 220,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: customers.length,
+            itemBuilder: (context, index) {
+              return _CustomerCard(
+                customer: customers[index],
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CustomerProfileScreen(customer: customers[index]),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: customers.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            return _CustomerCard(
+              customer: customers[index],
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        CustomerProfileScreen(customer: customers[index]),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      }
+      return const SizedBox();
+    },
+  );
+}
+
+Widget _buildFilterChip(
+  String label, {
+  IconData? icon,
+  bool isSelected = false,
+  VoidCallback? onTap,
+  bool isFullWidth = false,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: isFullWidth ? double.infinity : null,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF007FFF) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 14,
+              color: isSelected ? Colors.white : const Color(0xFF475569),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : const Color(0xFF475569),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _CustomerCard extends StatelessWidget {
@@ -230,7 +334,7 @@ class _CustomerCard extends StatelessWidget {
         statusTextColor = Colors.green.shade600;
         break;
       case 'AMC Plan':
-        statusBgColor = const Color(0xFF007FFF).withOpacity(0.1);
+        statusBgColor = const Color(0xFF007FFF).withValues(alpha: 0.1);
         statusTextColor = const Color(0xFF007FFF);
         break;
       default:
@@ -248,7 +352,10 @@ class _CustomerCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+            ),
           ],
         ),
         child: Column(
@@ -339,7 +446,7 @@ class _CustomerCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF007FFF).withOpacity(0.1),
+                        color: const Color(0xFF007FFF).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(

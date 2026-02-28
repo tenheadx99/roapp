@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../widgets/responsive_layout.dart';
 
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
@@ -57,31 +58,9 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(width: 16),
           ],
         ),
-        body: BlocBuilder<DashboardBloc, DashboardState>(
-          builder: (context, state) {
-            if (state is DashboardLoading || state is DashboardInitial) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is DashboardError) {
-              return Center(child: Text(state.message));
-            } else if (state is DashboardLoaded) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStatsGrid(state.stats),
-                    const SizedBox(height: 32),
-                    _buildQuickActions(context),
-                    const SizedBox(height: 16),
-                    _buildRecentActivity(
-                      state.activities.cast<Map<String, dynamic>>(),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox();
-          },
+        body: const ResponsiveLayout(
+          mobile: _MobileDashboardView(),
+          desktop: _DesktopDashboardView(),
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {},
@@ -91,222 +70,314 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildStatsGrid(Map<String, dynamic> stats) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.2,
-      children: [
-        _StatCard(
-          title: AppStrings.totalInventory,
-          value: stats['totalInventory'],
-          icon: Icons.inventory_2_outlined,
-          iconBgColor: Colors.blue.shade50,
-          iconColor: Colors.blue.shade600,
-          trend: '+5%',
-          trendIsUp: true,
-        ),
-        _StatCard(
-          title: AppStrings.pendingService,
-          value: stats['pendingService'],
-          icon: Icons.build_outlined,
-          iconBgColor: const Color(0xFF007FFF).withOpacity(0.1),
-          iconColor: const Color(0xFF007FFF),
-          trend: '+2%',
-          trendIsUp: true,
-        ),
-        _StatCard(
-          title: AppStrings.totalCustomers,
-          value: stats['totalCustomers'],
-          icon: Icons.group_outlined,
-          iconBgColor: Colors.grey.shade100,
-          iconColor: Colors.grey.shade600,
-          trend: '-1%',
-          trendIsUp: false,
-        ),
-        _StatCard(
-          title: AppStrings.lowStock,
-          value: stats['lowStock'],
-          icon: Icons.warning_amber_rounded,
-          iconBgColor: Colors.red.shade50,
-          iconColor: Colors.red.shade600,
-          trend: 'Alert',
-          trendIsUp: false,
-          isAlert: true,
-        ),
-      ],
-    );
-  }
+class _MobileDashboardView extends StatelessWidget {
+  const _MobileDashboardView();
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SemiBoldTextView(text: 'Quick Actions', fontSize: 16),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _QuickActionBtn(
-              icon: Icons.people_outline,
-              label: 'Customers',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CustomerListScreen()),
-              ),
-            ),
-            _QuickActionBtn(
-              icon: Icons.inventory_2_outlined,
-              label: 'Inventory',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InventoryScreen()),
-              ),
-            ),
-            _QuickActionBtn(
-              icon: Icons.precision_manufacturing_outlined,
-              label: 'Suppliers',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const SupplierDirectoryScreen(),
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        if (state is DashboardLoading || state is DashboardInitial) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is DashboardError) {
+          return Center(child: Text(state.message));
+        } else if (state is DashboardLoaded) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatsGrid(state.stats, isDesktop: false),
+                const SizedBox(height: 32),
+                _buildQuickActions(context),
+                const SizedBox(height: 16),
+                _buildRecentActivity(
+                  state.activities.cast<Map<String, dynamic>>(),
                 ),
-              ),
+              ],
             ),
-            _QuickActionBtn(
-              icon: Icons.build_outlined,
-              label: 'Dispatch',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
-              ),
-            ),
-            _QuickActionBtn(
-              icon: Icons.engineering_outlined,
-              label: 'Technicians',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TechniciansScreen()),
-              ),
-            ),
-            _QuickActionBtn(
-              icon: Icons.insights_outlined,
-              label: 'Insights',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InsightsScreen()),
-              ),
-            ),
-          ],
-        ),
-      ],
+          );
+        }
+        return const SizedBox();
+      },
     );
   }
+}
 
-  Widget _buildRecentActivity(List<Map<String, dynamic>> activities) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SemiBoldTextView(
-              text: AppStrings.recentActivity,
-              fontSize: 16,
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                AppStrings.viewAll,
-                style: TextStyle(
-                  color: Color(0xFF007FFF),
-                  fontWeight: FontWeight.bold,
+class _DesktopDashboardView extends StatelessWidget {
+  const _DesktopDashboardView();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        if (state is DashboardLoading || state is DashboardInitial) {
+          return const Center(child: CircularProgressIndicator());
+        } else if (state is DashboardError) {
+          return Center(child: Text(state.message));
+        } else if (state is DashboardLoaded) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatsGrid(state.stats, isDesktop: true),
+                const SizedBox(height: 32),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: _buildRecentActivity(
+                          state.activities.cast<Map<String, dynamic>>(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: _buildQuickActions(context),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: activities.length,
-          separatorBuilder: (context, index) => const Divider(indent: 52),
-          itemBuilder: (context, index) {
-            final activity = activities[index];
-            IconData iconToUse;
-            Color iconColor;
-            Color iconBg;
-            switch (activity['color']) {
-              case 'green':
-                iconToUse = Icons.check_circle_outline;
-                iconColor = Colors.green.shade600;
-                iconBg = Colors.green.shade50;
-                break;
-              case 'blue':
-                iconToUse = Icons.person_add_alt_1_outlined;
-                iconColor = Colors.blue.shade600;
-                iconBg = Colors.blue.shade50;
-                break;
-              case 'orange':
-              default:
-                iconToUse = Icons.calendar_today_outlined;
-                iconColor = Colors.orange.shade600;
-                iconBg = Colors.orange.shade50;
-                break;
-            }
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: iconBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: iconColor.withOpacity(0.2)),
-                    ),
-                    child: Icon(iconToUse, color: iconColor, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SemiBoldTextView(
-                          text: activity['title'] as String,
-                          fontSize: 14,
-                        ),
-                        const SizedBox(height: 2),
-                        SubRegularText(text: activity['desc'] as String),
-                        const SizedBox(height: 4),
-                        Text(
-                          activity['time'] as String,
-                          style: const TextStyle(
-                            color: Color(0xFF007FFF),
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
+          );
+        }
+        return const SizedBox();
+      },
     );
   }
+}
+
+Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
+  return GridView.count(
+    crossAxisCount: isDesktop ? 4 : 2,
+    crossAxisSpacing: 16,
+    mainAxisSpacing: 16,
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    childAspectRatio: isDesktop ? 1.5 : 1.2,
+    children: [
+      _StatCard(
+        title: AppStrings.totalInventory,
+        value: stats['totalInventory'],
+        icon: Icons.inventory_2_outlined,
+        iconBgColor: Colors.blue.shade50,
+        iconColor: Colors.blue.shade600,
+        trend: '+5%',
+        trendIsUp: true,
+      ),
+      _StatCard(
+        title: AppStrings.pendingService,
+        value: stats['pendingService'],
+        icon: Icons.build_outlined,
+        iconBgColor: const Color(0xFF007FFF).withValues(alpha: 0.1),
+        iconColor: const Color(0xFF007FFF),
+        trend: '+2%',
+        trendIsUp: true,
+      ),
+      _StatCard(
+        title: AppStrings.totalCustomers,
+        value: stats['totalCustomers'],
+        icon: Icons.group_outlined,
+        iconBgColor: Colors.grey.shade100,
+        iconColor: Colors.grey.shade600,
+        trend: '-1%',
+        trendIsUp: false,
+      ),
+      _StatCard(
+        title: AppStrings.lowStock,
+        value: stats['lowStock'],
+        icon: Icons.warning_amber_rounded,
+        iconBgColor: Colors.red.shade50,
+        iconColor: Colors.red.shade600,
+        trend: 'Alert',
+        trendIsUp: false,
+        isAlert: true,
+      ),
+    ],
+  );
+}
+
+Widget _buildQuickActions(BuildContext context) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SemiBoldTextView(text: 'Quick Actions', fontSize: 16),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          _QuickActionBtn(
+            icon: Icons.people_outline,
+            label: 'Customers',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+            ),
+          ),
+          _QuickActionBtn(
+            icon: Icons.inventory_2_outlined,
+            label: 'Inventory',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InventoryScreen()),
+            ),
+          ),
+          _QuickActionBtn(
+            icon: Icons.precision_manufacturing_outlined,
+            label: 'Suppliers',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SupplierDirectoryScreen(),
+              ),
+            ),
+          ),
+          _QuickActionBtn(
+            icon: Icons.build_outlined,
+            label: 'Dispatch',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+            ),
+          ),
+          _QuickActionBtn(
+            icon: Icons.engineering_outlined,
+            label: 'Technicians',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TechniciansScreen()),
+            ),
+          ),
+          _QuickActionBtn(
+            icon: Icons.insights_outlined,
+            label: 'Insights',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InsightsScreen()),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+Widget _buildRecentActivity(List<Map<String, dynamic>> activities) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const SemiBoldTextView(text: AppStrings.recentActivity, fontSize: 16),
+          TextButton(
+            onPressed: () {},
+            child: const Text(
+              AppStrings.viewAll,
+              style: TextStyle(
+                color: Color(0xFF007FFF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: activities.length,
+        separatorBuilder: (context, index) => const Divider(indent: 52),
+        itemBuilder: (context, index) {
+          final activity = activities[index];
+          IconData iconToUse;
+          Color iconColor;
+          Color iconBg;
+          switch (activity['color']) {
+            case 'green':
+              iconToUse = Icons.check_circle_outline;
+              iconColor = Colors.green.shade600;
+              iconBg = Colors.green.shade50;
+              break;
+            case 'blue':
+              iconToUse = Icons.person_add_alt_1_outlined;
+              iconColor = Colors.blue.shade600;
+              iconBg = Colors.blue.shade50;
+              break;
+            case 'orange':
+            default:
+              iconToUse = Icons.calendar_today_outlined;
+              iconColor = Colors.orange.shade600;
+              iconBg = Colors.orange.shade50;
+              break;
+          }
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: iconColor.withOpacity(0.2)),
+                  ),
+                  child: Icon(iconToUse, color: iconColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SemiBoldTextView(
+                        text: activity['title'] as String,
+                        fontSize: 14,
+                      ),
+                      const SizedBox(height: 2),
+                      SubRegularText(text: activity['desc'] as String),
+                      const SizedBox(height: 4),
+                      Text(
+                        activity['time'] as String,
+                        style: const TextStyle(
+                          color: Color(0xFF007FFF),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ],
+  );
 }
 
 class _QuickActionBtn extends StatelessWidget {
