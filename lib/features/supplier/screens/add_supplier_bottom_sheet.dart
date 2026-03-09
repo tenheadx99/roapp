@@ -31,7 +31,14 @@ class _AddSupplierBottomSheetState extends State<AddSupplierBottomSheet> {
       _contactPerson = widget.supplierToEdit!.contactPerson;
       _city = widget.supplierToEdit!.city;
       _specialties = widget.supplierToEdit!.specialties.join(', ');
-      _status = widget.supplierToEdit!.status;
+
+      final status = widget.supplierToEdit!.status;
+      const validStatuses = ['active', 'inactive'];
+      if (validStatuses.contains(status)) {
+        _status = status;
+      } else {
+        _status = 'active';
+      }
     }
   }
 

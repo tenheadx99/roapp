@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -32,14 +33,27 @@ class _AddTechnicianBottomSheetState extends State<AddTechnicianBottomSheet> {
       _name = widget.technicianToEdit!.name;
       _phone = widget.technicianToEdit!.phone;
       _region = widget.technicianToEdit!.region;
-      _status = widget.technicianToEdit!.status;
+
+      // Map legacy/db status to valid dropdown status
+      String status = widget.technicianToEdit!.status;
+      if (status == 'online') {
+        _status = 'Available';
+      } else if (status == 'on-leave' || status == 'offline') {
+        _status = 'Offline';
+      } else if (status == 'busy') {
+        _status = 'On Job';
+      } else if (_statuses.contains(status)) {
+        _status = status;
+      } else {
+        _status = _statuses.first; // Default fallback
+      }
     }
   }
 
   void _submitForm() {
     if (_name.trim().isEmpty || _phone.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and Phone are required')),
+        const SnackBar(content: Text(AppStrings.namePhoneRequired)),
       );
       return;
     }
@@ -99,29 +113,29 @@ class _AddTechnicianBottomSheetState extends State<AddTechnicianBottomSheet> {
             ),
             HeaderText(
               text: widget.technicianToEdit == null
-                  ? "Add Technician"
-                  : "Edit Technician",
+                  ? AppStrings.addTechnician
+                  : AppStrings.editTechnician,
               fontSize: 20,
             ),
             const SizedBox(height: 24),
             CustomTextField(
               initialValue: _name,
               onChanged: (val) => _name = val,
-              hintText: "Full Name",
+              hintText: AppStrings.fullName,
               prefixIcon: const Icon(Icons.person_outline),
             ),
             const SizedBox(height: 16),
             CustomTextField(
               initialValue: _phone,
               onChanged: (val) => _phone = val,
-              hintText: "Phone Number",
+              hintText: AppStrings.phoneNumberPlaceholder,
               prefixIcon: const Icon(Icons.phone_outlined),
             ),
             const SizedBox(height: 16),
             CustomTextField(
               initialValue: _region,
               onChanged: (val) => _region = val,
-              hintText: "Region (e.g. North District)",
+              hintText: AppStrings.regionHint,
               prefixIcon: const Icon(Icons.map_outlined),
             ),
             const SizedBox(height: 16),
@@ -155,7 +169,10 @@ class _AddTechnicianBottomSheetState extends State<AddTechnicianBottomSheet> {
               },
             ),
             const SizedBox(height: 32),
-            CustomButton(text: "Save Technician", onPressed: _submitForm),
+            CustomButton(
+              text: AppStrings.saveTechnician,
+              onPressed: _submitForm,
+            ),
           ],
         ),
       ),

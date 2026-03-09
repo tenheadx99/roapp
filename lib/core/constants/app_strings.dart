@@ -58,4 +58,45 @@ class AppStrings {
   static const String comingSoon = "Coming Soon";
   static const String addSupplier = 'Add Supplier';
   static const String add = 'Add';
+
+  // Technicians Screen
+  static const String activeTeamMembers = "Active Team Members";
+  static const String searchTechHint = "Search name or region...";
+  static const String noTechniciansFound = "No technicians found.";
+  static const String tasksToday = "Tasks Today";
+  static const String noTasksToday = "No tasks today";
+  static const String nextAvailable = "Next available: Mon";
+  static const String viewSchedule = "View Schedule";
+  static const String editProfile = "Edit Profile";
+
+  // Add Technician Sheet
+  static const String addTechnician = "Add Technician";
+  static const String editTechnician = "Edit Technician";
+  static const String fullName = "Full Name";
+  static const String phoneNumberPlaceholder = "Phone Number";
+  static const String regionHint = "Region (e.g. North District)";
+  static const String saveTechnician = "Save Technician";
+  static const String namePhoneRequired = "Name and Phone are required";
+
+  // Dispatch Hub
+  static const String dispatchHubTitle = "Dispatch Hub";
+  static const String fullCalendar = "Full Calendar";
+  static const String chooseTechnician = "Choose Technician...";
+  static const String selectStaff = "SELECT STAFF";
+  static const String serviceNotes = "SERVICE NOTES";
+  static const String confirmAssignment = "Confirm Assignment";
+  static const String assign = "Assign";
+  static const String assignTechnician = "Assign Technician";
+  static const String noRequestsFound = "No requests found for this tab.";
+  static const String serviceNotesHint =
+      "e.g. Gate code 1234, Check TDS levels specifically...";
+  static const String saveRequest = "Save Request";
+  static const String newServiceRequest = "New Service Request";
+  static const String editRequest = "Edit Request";
+  static const String customerName = "Customer Name";
+  static const String address = "Address";
+  static const String unitModel = "Unit Model";
+  static const String selectDateTime = "Select Date & Time";
+  static const String nameAddressRequired =
+      "Customer Name and Address are required";
 }

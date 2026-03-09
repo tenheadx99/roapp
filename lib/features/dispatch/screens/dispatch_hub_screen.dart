@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../widgets/custom_button.dart';
+import '../../../widgets/custom_text_field.dart';
+import '../../../widgets/header_text.dart';
+import '../../../widgets/label_text.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
+import '../../technician/models/technician.dart';
+import '../../technician/repositories/technician_repository.dart';
 import '../bloc/dispatch_bloc.dart';
 import '../models/service_request.dart';
 import 'add_service_request_bottom_sheet.dart';
@@ -26,21 +33,12 @@ class _DispatchHubView extends StatefulWidget {
 }
 
 class _DispatchHubViewState extends State<_DispatchHubView> {
-  bool _showAssignPanel = false;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
-        title: const Text(
-          'Dispatch Hub',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: HeaderText(text: AppStrings.dispatchHubTitle, fontSize: 18),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -48,42 +46,38 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              _buildCalendarHeader(),
-              _buildTabs(),
-              Expanded(
-                child: BlocBuilder<DispatchBloc, DispatchState>(
-                  builder: (context, state) {
-                    if (state is DispatchLoading || state is DispatchInitial) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (state is DispatchError) {
-                      return Center(child: Text(state.message));
-                    } else if (state is DispatchLoaded) {
-                      final requests = state.filteredRequests;
-                      return _buildRequestList(requests);
-                    }
-                    return const SizedBox();
-                  },
-                ),
-              ),
-            ],
+          _buildCalendarHeader(),
+          _buildTabs(),
+          Expanded(
+            child: BlocBuilder<DispatchBloc, DispatchState>(
+              builder: (context, state) {
+                if (state is DispatchLoading || state is DispatchInitial) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is DispatchError) {
+                  return Center(child: Text(state.message));
+                } else if (state is DispatchLoaded) {
+                  return _buildRequestList(state.filteredRequests);
+                }
+                return const SizedBox();
+              },
+            ),
           ),
-          if (_showAssignPanel) _buildAssignPanel(),
         ],
       ),
       floatingActionButton: Builder(
         builder: (context) {
+          final bloc = context.read<DispatchBloc>();
           return FloatingActionButton(
+            heroTag: 'add_service_request',
             onPressed: () {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
                 backgroundColor: Colors.transparent,
                 builder: (_) => BlocProvider.value(
-                  value: context.read<DispatchBloc>(),
+                  value: bloc,
                   child: const AddServiceRequestBottomSheet(),
                 ),
               );
@@ -127,7 +121,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                 Row(
                   children: [
                     const Text(
-                      'Full Calendar',
+                      AppStrings.fullCalendar,
                       style: TextStyle(
                         color: Color(0xFF007FFF),
                         fontSize: 14,
@@ -213,27 +207,44 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
   }
 
   Widget _buildTabs() {
-    final tabs = ['New (4)', 'Assigned (12)', 'In Progress (8)'];
-
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: BlocBuilder<DispatchBloc, DispatchState>(
         builder: (context, state) {
-          String activeTab = 'New (4)';
+          String activeTab = 'New';
+          int newCount = 0;
+          int assignedCount = 0;
+          int inProgressCount = 0;
+
           if (state is DispatchLoaded) {
             activeTab = state.activeTab;
+            newCount = state.allRequests.where((r) => r.status == 'new').length;
+            assignedCount = state.allRequests
+                .where((r) => r.status == 'assigned')
+                .length;
+            inProgressCount = state.allRequests
+                .where((r) => r.status == 'in_progress')
+                .length;
           }
+
+          final tabs = [
+            {'label': 'New', 'count': newCount},
+            {'label': 'Assigned', 'count': assignedCount},
+            {'label': 'In Progress', 'count': inProgressCount},
+          ];
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: tabs.map((tab) {
-                final isActive = tab == activeTab;
+                final label = tab['label'] as String;
+                final count = tab['count'] as int;
+                final isActive = label == activeTab;
                 return GestureDetector(
                   onTap: () {
                     context.read<DispatchBloc>().add(
-                      FilterDispatchRequests(tab),
+                      FilterDispatchRequests(label),
                     );
                   },
                   child: Container(
@@ -249,7 +260,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      tab,
+                      '$label ($count)',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -270,7 +281,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
 
   Widget _buildRequestList(List<ServiceRequest> requests) {
     if (requests.isEmpty) {
-      return const Center(child: Text('No requests found for this tab.'));
+      return const Center(child: Text(AppStrings.noRequestsFound));
     }
 
     return ListView.separated(
@@ -347,7 +358,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                     color: Color(0xFF64748B),
                   ),
                   const SizedBox(width: 4),
-                  SubRegularText(text: req.address),
+                  Expanded(child: SubRegularText(text: req.address)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -394,29 +405,17 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       ),
                     ],
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showAssignPanel = true;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF007FFF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    child: const Text(
-                      'Assign',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  if (req.status == 'new')
+                    SizedBox(
+                      width: 100,
+                      height: 36,
+                      child: CustomButton(
+                        text: AppStrings.assign,
+                        onPressed: () => _showAssignBottomSheet(context, req),
+                        height: 36,
+                        borderRadius: 8,
                       ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -426,194 +425,180 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     );
   }
 
-  Widget _buildAssignPanel() {
-    return Stack(
-      children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _showAssignPanel = false;
-            });
+  void _showAssignBottomSheet(BuildContext context, ServiceRequest request) {
+    final dispatchBloc = context.read<DispatchBloc>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return _AssignTechnicianSheet(
+          request: request,
+          onAssign: (techName, notes) {
+            final updatedRequest = request.copyWith(status: 'assigned');
+            dispatchBloc.add(UpdateServiceRequest(updatedRequest));
           },
-          child: Container(color: Colors.black.withOpacity(0.2)),
-        ),
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 40,
-                  offset: Offset(0, -10),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Assign Technician',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _showAssignPanel = false;
-                          });
-                        },
-                        icon: const Icon(Icons.close),
-                        style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFFF1F5F9),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'SELECT STAFF',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF94A3B8),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        hint: const Text(
-                          'Choose Technician...',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        items:
-                            [
-                                  'Michael Scott (Available)',
-                                  'Dwight Schrute (Busy)',
-                                  'Jim Halpert (Available)',
-                                ]
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e,
-                                    child: Text(
-                                      e,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) {},
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'SERVICE NOTES',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF94A3B8),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const TextField(
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText:
-                            'e.g. Gate code 1234, Check TDS levels specifically...',
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showAssignPanel = false;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF007FFF),
-                      minimumSize: const Size(double.infinity, 56),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 4,
-                      shadowColor: const Color(0xFF007FFF).withOpacity(0.5),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Confirm Assignment',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(Icons.send, color: Colors.white, size: 18),
-                      ],
-                    ),
-                  ),
-                ],
+        );
+      },
+    );
+  }
+}
+
+class _AssignTechnicianSheet extends StatefulWidget {
+  final ServiceRequest request;
+  final Function(String, String) onAssign;
+
+  const _AssignTechnicianSheet({required this.request, required this.onAssign});
+
+  @override
+  State<_AssignTechnicianSheet> createState() => _AssignTechnicianSheetState();
+}
+
+class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
+  String? _selectedTechnician;
+  final TextEditingController _notesController = TextEditingController();
+  final TechnicianRepository _technicianRepository = TechnicianRepository();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 40,
+            offset: Offset(0, -10),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: 24,
+        right: 24,
+        top: 24,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 48,
+              height: 6,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SemiBoldTextView(text: AppStrings.assignTechnician, fontSize: 18),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const LabelText(text: AppStrings.selectStaff),
+          FutureBuilder<List<Technician>>(
+            future: _technicianRepository.getTechnicians(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final techs = snapshot.data ?? [];
+              if (techs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: SubRegularText(text: "No technicians available."),
+                );
+              }
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedTechnician,
+                    hint: const SubRegularText(
+                      text: AppStrings.chooseTechnician,
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Color(0xFF94A3B8),
+                    ),
+                    items: techs
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.name,
+                            child: SubRegularText(
+                              text: '${e.name} (${e.status})',
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedTechnician = val;
+                      });
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          const LabelText(text: AppStrings.serviceNotes),
+          CustomTextField(
+            hintText: AppStrings.serviceNotesHint,
+            onChanged: (val) {
+              _notesController.text = val;
+            },
+          ),
+          const SizedBox(height: 24),
+          CustomButton(
+            text: AppStrings.confirmAssignment,
+            onPressed: () {
+              if (_selectedTechnician != null) {
+                widget.onAssign(_selectedTechnician!, _notesController.text);
+                Navigator.pop(context);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please select a technician')),
+                );
+              }
+            },
+            icon: const Icon(Icons.send, color: Colors.white, size: 18),
+          ),
+        ],
+      ),
     );
   }
 }

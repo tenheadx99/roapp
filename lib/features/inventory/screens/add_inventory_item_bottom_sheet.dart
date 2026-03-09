@@ -49,7 +49,13 @@ class _AddInventoryItemBottomSheetState
       _price = widget.itemToEdit!.price.toString();
       _stock = widget.itemToEdit!.stock.toString();
       _lowStockThreshold = widget.itemToEdit!.lowStockThreshold.toString();
-      _selectedCategory = widget.itemToEdit!.category;
+
+      final category = widget.itemToEdit!.category;
+      if (_categories.contains(category)) {
+        _selectedCategory = category;
+      } else {
+        _selectedCategory = _categories.first;
+      }
       _isEditing = false;
     }
     _loadSuppliers();

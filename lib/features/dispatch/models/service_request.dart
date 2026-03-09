@@ -53,4 +53,24 @@ class ServiceRequest extends Equatable {
     time,
     status,
   ];
+
+  ServiceRequest copyWith({
+    String? id,
+    String? customerName,
+    String? address,
+    String? type,
+    String? model,
+    String? time,
+    String? status,
+  }) {
+    return ServiceRequest(
+      id: id ?? this.id,
+      customerName: customerName ?? this.customerName,
+      address: address ?? this.address,
+      type: type ?? this.type,
+      model: model ?? this.model,
+      time: time ?? this.time,
+      status: status ?? this.status,
+    );
+  }
 }

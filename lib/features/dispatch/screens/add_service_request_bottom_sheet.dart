@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -56,10 +57,22 @@ class _AddServiceRequestBottomSheetState
     if (widget.requestToEdit != null) {
       _customerName = widget.requestToEdit!.customerName;
       _address = widget.requestToEdit!.address;
-      _type = widget.requestToEdit!.type;
       _model = widget.requestToEdit!.model;
       _time = widget.requestToEdit!.time;
-      _status = widget.requestToEdit!.status;
+
+      final type = widget.requestToEdit!.type;
+      if (_types.contains(type)) {
+        _type = type;
+      } else {
+        _type = _types.first;
+      }
+
+      final status = widget.requestToEdit!.status;
+      if (_statuses.contains(status)) {
+        _status = status;
+      } else {
+        _status = _statuses.first;
+      }
     } else {
       _customerName = widget.initialCustomerName ?? '';
       _address = widget.initialAddress ?? '';
@@ -70,7 +83,7 @@ class _AddServiceRequestBottomSheetState
   void _submitForm() {
     if (_customerName.trim().isEmpty || _address.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Customer Name and Address are required')),
+        const SnackBar(content: Text(AppStrings.nameAddressRequired)),
       );
       return;
     }
@@ -127,29 +140,29 @@ class _AddServiceRequestBottomSheetState
             ),
             HeaderText(
               text: widget.requestToEdit == null
-                  ? "New Service Request"
-                  : "Edit Request",
+                  ? AppStrings.newServiceRequest
+                  : AppStrings.editRequest,
               fontSize: 20,
             ),
             const SizedBox(height: 24),
             CustomTextField(
               initialValue: _customerName,
               onChanged: (val) => _customerName = val,
-              hintText: "Customer Name",
+              hintText: AppStrings.customerName,
               prefixIcon: const Icon(Icons.person_outline),
             ),
             const SizedBox(height: 16),
             CustomTextField(
               initialValue: _address,
               onChanged: (val) => _address = val,
-              hintText: "Address",
+              hintText: AppStrings.address,
               prefixIcon: const Icon(Icons.location_on_outlined),
             ),
             const SizedBox(height: 16),
             CustomTextField(
               initialValue: _model,
               onChanged: (val) => _model = val,
-              hintText: "Unit Model",
+              hintText: AppStrings.unitModel,
               prefixIcon: const Icon(Icons.water_drop_outlined),
             ),
             const SizedBox(height: 16),
@@ -258,7 +271,7 @@ class _AddServiceRequestBottomSheetState
                     color: Color(0xFF0F172A),
                   ),
                   decoration: InputDecoration(
-                    hintText: "Select Date & Time",
+                    hintText: AppStrings.selectDateTime,
                     hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                     prefixIcon: const Icon(Icons.calendar_month),
                     filled: true,
@@ -283,7 +296,7 @@ class _AddServiceRequestBottomSheetState
               ),
             ),
             const SizedBox(height: 32),
-            CustomButton(text: "Save Request", onPressed: _submitForm),
+            CustomButton(text: AppStrings.saveRequest, onPressed: _submitForm),
           ],
         ),
       ),

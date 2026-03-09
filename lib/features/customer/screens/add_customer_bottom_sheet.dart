@@ -38,7 +38,13 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       _phone = widget.customerToEdit!.phone;
       _model = widget.customerToEdit!.model;
       _area = widget.customerToEdit!.area;
-      _selectedStatus = widget.customerToEdit!.status;
+
+      final status = widget.customerToEdit!.status;
+      if (_statusOptions.contains(status)) {
+        _selectedStatus = status;
+      } else {
+        _selectedStatus = _statusOptions.first;
+      }
     }
   }
 
