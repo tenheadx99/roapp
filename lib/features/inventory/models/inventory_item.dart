@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 class InventoryItem extends Equatable {
   final String id;
   final String name;
-  final String sku;
+  final double mrp;
   final String supplier;
   final double price;
   final int stock;
@@ -13,7 +13,7 @@ class InventoryItem extends Equatable {
   const InventoryItem({
     required this.id,
     required this.name,
-    required this.sku,
+    required this.mrp,
     required this.supplier,
     required this.price,
     required this.stock,
@@ -25,9 +25,9 @@ class InventoryItem extends Equatable {
     return InventoryItem(
       id: map['id'] as String,
       name: map['name'] as String,
-      sku: map['sku'] as String,
+      mrp: (map['mrp'] as num).toDouble(),
       supplier: map['supplier'] as String,
-      price: map['price'] as double,
+      price: (map['price'] as num).toDouble(),
       stock: map['stock'] as int,
       lowStockThreshold: map['lowStockThreshold'] as int,
       category: map['category'] as String,
@@ -38,7 +38,7 @@ class InventoryItem extends Equatable {
     return {
       'id': id,
       'name': name,
-      'sku': sku,
+      'mrp': mrp,
       'supplier': supplier,
       'price': price,
       'stock': stock,
@@ -47,11 +47,33 @@ class InventoryItem extends Equatable {
     };
   }
 
+  InventoryItem copyWith({
+    String? id,
+    String? name,
+    double? mrp,
+    String? supplier,
+    double? price,
+    int? stock,
+    int? lowStockThreshold,
+    String? category,
+  }) {
+    return InventoryItem(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      mrp: mrp ?? this.mrp,
+      supplier: supplier ?? this.supplier,
+      price: price ?? this.price,
+      stock: stock ?? this.stock,
+      lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
+      category: category ?? this.category,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,
     name,
-    sku,
+    mrp,
     supplier,
     price,
     stock,

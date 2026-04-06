@@ -13,6 +13,7 @@ import '../../notifications/screens/notifications_screen.dart';
 import '../../supplier/screens/supplier_directory_screen.dart';
 import '../../technician/screens/technicians_screen.dart';
 import '../bloc/dashboard_bloc.dart';
+import 'scheduled_services_screen.dart';
 // Note: Icon usage and exact colors may need refinement
 // but this implements the structure and Bloc usage.
 
@@ -37,6 +38,34 @@ class DashboardScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           elevation: 0,
           actions: [
+            Builder(
+              builder: (buttonContext) => IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                tooltip: 'Clear All Data',
+                onPressed: () {
+                  showDialog(
+                    context: buttonContext,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Clear All Data?'),
+                      content: const Text('This will delete all customers, inventory, and history. This action cannot be undone.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            buttonContext.read<DashboardBloc>().add(DashboardDataClearRequested());
+                            Navigator.pop(dialogContext);
+                          },
+                          child: const Text('Clear', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.notifications_none, color: Colors.black),
               onPressed: () {
@@ -93,6 +122,8 @@ class _MobileDashboardView extends StatelessWidget {
                 const SizedBox(height: 32),
                 _buildQuickActions(context),
                 const SizedBox(height: 16),
+                _buildScheduledServices(context, state.scheduledServices),
+                const SizedBox(height: 16),
                 _buildRecentActivity(
                   state.activities.cast<Map<String, dynamic>>(),
                 ),
@@ -130,16 +161,30 @@ class _DesktopDashboardView extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 2,
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: _buildRecentActivity(
-                          state.activities.cast<Map<String, dynamic>>(),
-                        ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: _buildScheduledServices(context, state.scheduledServices),
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: _buildRecentActivity(
+                              state.activities.cast<Map<String, dynamic>>(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 24),
@@ -279,6 +324,121 @@ Widget _buildQuickActions(BuildContext context) {
           ),
         ],
       ),
+    ],
+  );
+}
+
+Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServices) {
+  final top5Scheduled = scheduledServices.take(5).toList();
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const SemiBoldTextView(text: 'Scheduled Services', fontSize: 16),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ScheduledServicesScreen(
+                    scheduledServices: scheduledServices,
+                  ),
+                ),
+              );
+            },
+            child: const Text(
+              'View All',
+              style: TextStyle(
+                color: Color(0xFF007FFF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      if (top5Scheduled.isEmpty)
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: SubRegularText(text: 'No upcoming scheduled services.'),
+        )
+      else
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: top5Scheduled.length,
+          separatorBuilder: (context, index) => const Divider(indent: 52),
+          itemBuilder: (context, index) {
+            final service = top5Scheduled[index] as Map<String, dynamic>;
+            final isPending = service['status'] == 'Pending';
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.blue.shade200.withOpacity(0.5)),
+                    ),
+                    child: Icon(Icons.build_circle_outlined, color: Colors.blue.shade600, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SemiBoldTextView(
+                          text: service['title'] as String,
+                          fontSize: 14,
+                        ),
+                        const SizedBox(height: 2),
+                        SubRegularText(text: 'Customer: ${service['customerName']}'),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              service['time'] as String,
+                              style: const TextStyle(
+                                color: Color(0xFF007FFF),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            if (service['status'] != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isPending ? Colors.orange.shade50 : Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  service['status'],
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isPending ? Colors.orange.shade700 : Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
     ],
   );
 }

@@ -52,6 +52,30 @@ class Customer extends Equatable {
     };
   }
 
+  Customer copyWith({
+    String? id,
+    String? name,
+    String? phone,
+    String? model,
+    String? status,
+    String? lastService,
+    String? area,
+    String? installationDate,
+    String? upcomingServiceDate,
+  }) {
+    return Customer(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      model: model ?? this.model,
+      status: status ?? this.status,
+      lastService: lastService ?? this.lastService,
+      area: area ?? this.area,
+      installationDate: installationDate ?? this.installationDate,
+      upcomingServiceDate: upcomingServiceDate ?? this.upcomingServiceDate,
+    );
+  }
+
   @override
   List<Object?> get props => [
     id,

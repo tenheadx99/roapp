@@ -183,8 +183,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     return items.where((item) {
       final matchesCategory = category == 'All' || item.category == category;
       final matchesQuery =
-          item.name.toLowerCase().contains(query) ||
-          item.sku.toLowerCase().contains(query);
+          item.name.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
   }

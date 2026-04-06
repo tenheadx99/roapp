@@ -364,7 +364,7 @@ class _SupplierList extends StatelessWidget {
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 400,
-                              childAspectRatio: 1.5,
+                              childAspectRatio: 1.2,
                               crossAxisSpacing: 16,
                               mainAxisSpacing: 16,
                             ),
@@ -500,7 +500,7 @@ class _SupplierCard extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             const Divider(color: Color(0xFFF8FAFC), height: 1),
             const SizedBox(height: 12),
             Row(

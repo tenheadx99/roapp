@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
+import '../../../core/database/database_helper.dart';
 
 // --- Events ---
 abstract class DashboardEvent extends Equatable {
@@ -13,6 +14,8 @@ abstract class DashboardEvent extends Equatable {
 }
 
 class DashboardDataRequested extends DashboardEvent {}
+
+class DashboardDataClearRequested extends DashboardEvent {}
 
 // --- States ---
 abstract class DashboardState extends Equatable {
@@ -30,11 +33,16 @@ class DashboardLoaded extends DashboardState {
   // In a real app these would be typed data structures
   final Map<String, dynamic> stats;
   final List<dynamic> activities;
+  final List<dynamic> scheduledServices;
 
-  const DashboardLoaded(this.stats, this.activities);
+  const DashboardLoaded(
+    this.stats,
+    this.activities,
+    this.scheduledServices,
+  );
 
   @override
-  List<Object?> get props => [stats, activities];
+  List<Object?> get props => [stats, activities, scheduledServices];
 }
 
 class DashboardError extends DashboardState {
@@ -50,6 +58,7 @@ class DashboardError extends DashboardState {
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   DashboardBloc() : super(DashboardInitial()) {
     on<DashboardDataRequested>(_onDataRequested);
+    on<DashboardDataClearRequested>(_onDataClearRequested);
   }
 
   void _onDataRequested(
@@ -111,7 +120,37 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         ];
       }
 
-      emit(DashboardLoaded(stats, activities));
+      // Sort requests by time assuming time string is comparable like 'HH:MM' or 'YYYY-MM-DD'
+      // Taking top 5
+      final scheduledServices = List<Map<String, dynamic>>.from(
+        requests.map((req) => {
+          'id': req.id,
+          'title': '${req.type} Request - ${req.address}',
+          'customerName': req.customerName,
+          'time': req.time,
+          'status': req.status,
+          'type': req.type,
+          'model': req.model,
+        })
+      );
+      
+      // Basic string sort by time (you might need proper DateTime parsing if formats vary)
+      scheduledServices.sort((a, b) => (a['time'] as String).compareTo(b['time'] as String));
+
+      emit(DashboardLoaded(stats, activities, scheduledServices));
+    } catch (e) {
+      emit(DashboardError(e.toString()));
+    }
+  }
+
+  void _onDataClearRequested(
+    DashboardDataClearRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    emit(DashboardLoading());
+    try {
+      await DatabaseHelper.instance.clearAllData();
+      add(DashboardDataRequested());
     } catch (e) {
       emit(DashboardError(e.toString()));
     }

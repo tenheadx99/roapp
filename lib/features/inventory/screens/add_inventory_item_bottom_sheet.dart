@@ -22,7 +22,7 @@ class AddInventoryItemBottomSheet extends StatefulWidget {
 class _AddInventoryItemBottomSheetState
     extends State<AddInventoryItemBottomSheet> {
   String _name = '';
-  String _sku = '';
+  String _mrp = '';
   String _supplier = '';
   String _price = '';
   String _stock = '';
@@ -44,7 +44,7 @@ class _AddInventoryItemBottomSheetState
     super.initState();
     if (widget.itemToEdit != null) {
       _name = widget.itemToEdit!.name;
-      _sku = widget.itemToEdit!.sku;
+      _mrp = widget.itemToEdit!.mrp.toString();
       _supplier = widget.itemToEdit!.supplier;
       _price = widget.itemToEdit!.price.toString();
       _stock = widget.itemToEdit!.stock.toString();
@@ -75,12 +75,14 @@ class _AddInventoryItemBottomSheetState
   }
 
   void _submitForm() {
-    if (_name.trim().isEmpty || _sku.trim().isEmpty) {
+    if (_name.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and SKU are required')),
+        const SnackBar(content: Text('Name is required')),
       );
       return;
     }
+
+    final mrpValue = double.tryParse(_mrp.trim()) ?? 0.0;
 
     final priceValue = double.tryParse(_price.trim()) ?? 0.0;
     final stockValue = int.tryParse(_stock.trim()) ?? 0;
@@ -89,7 +91,7 @@ class _AddInventoryItemBottomSheetState
     final newItem = InventoryItem(
       id: widget.itemToEdit?.id ?? const Uuid().v4(),
       name: _name.trim(),
-      sku: _sku.trim(),
+      mrp: mrpValue,
       supplier: _supplier.trim().isNotEmpty
           ? _supplier.trim()
           : 'Unknown Supplier',
@@ -178,11 +180,11 @@ class _AddInventoryItemBottomSheetState
             ),
             const SizedBox(height: 16),
             CustomTextField(
-              initialValue: _sku,
-              onChanged: (val) => _sku = val,
-              hintText: "SKU (e.g. RO-MEM-75)",
+              initialValue: _mrp,
+              onChanged: (val) => _mrp = val,
+              hintText: "MRP",
               readOnly: !_isEditing,
-              prefixIcon: const Icon(Icons.qr_code_2),
+              prefixIcon: const Icon(Icons.price_check),
             ),
             const SizedBox(height: 16),
             CustomAutocompleteField(

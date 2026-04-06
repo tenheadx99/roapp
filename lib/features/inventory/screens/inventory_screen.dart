@@ -206,7 +206,7 @@ Widget _buildSearchField(BuildContext context) {
   return BlocBuilder<InventoryBloc, InventoryState>(
     builder: (context, state) {
       return CustomTextField(
-        hintText: "Search SKU or item name...",
+        hintText: "Search item name...",
         prefixIcon: const Icon(Icons.search, color: Color(0xFF94A3B8)),
         onChanged: (val) {
           context.read<InventoryBloc>().add(SearchInventory(val));
@@ -372,7 +372,7 @@ class _InventoryCard extends StatelessWidget {
                   children: [
                     SemiBoldTextView(text: item.name, fontSize: 16),
                     SubRegularText(
-                      text: 'SKU: ${item.sku} | Supplier: ${item.supplier}',
+                      text: 'MRP: \$${item.mrp.toStringAsFixed(2)} | Supplier: ${item.supplier}',
                     ),
                   ],
                 ),
