@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:roapp/core/database/database_helper.dart';
 import 'package:roapp/features/customer/models/customer.dart';
 import 'package:roapp/features/customer/repositories/customer_repository.dart';
@@ -29,7 +30,7 @@ void main() {
         lastService: 'Never',
         area: 'Rohini',
       );
-      
+
       await customerRepo.addCustomer(customer);
 
       // Get customers
@@ -45,13 +46,17 @@ void main() {
       // Update customer
       final updatedCustomer = customer.copyWith(name: 'Updated Name');
       await customerRepo.updateCustomer(updatedCustomer);
-      
-      final fetchedAfterUpdate = await customerRepo.getCustomerById(customer.id);
+
+      final fetchedAfterUpdate = await customerRepo.getCustomerById(
+        customer.id,
+      );
       expect(fetchedAfterUpdate!.name, 'Updated Name');
 
       // Delete customer
       await customerRepo.deleteCustomer(customer.id);
-      final fetchedAfterDelete = await customerRepo.getCustomerById(customer.id);
+      final fetchedAfterDelete = await customerRepo.getCustomerById(
+        customer.id,
+      );
       expect(fetchedAfterDelete, isNull);
     });
   });

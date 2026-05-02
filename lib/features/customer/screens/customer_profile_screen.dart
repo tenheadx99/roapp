@@ -15,6 +15,11 @@ import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../dispatch/screens/add_service_request_bottom_sheet.dart';
 import '../bloc/customer_bloc.dart';
 import 'add_customer_bottom_sheet.dart';
+import '../../operations/models/amc_contract.dart';
+import '../../operations/models/communication_log.dart';
+import '../../operations/models/invoice.dart';
+import '../../operations/models/service_attachment.dart';
+import '../../operations/repositories/operations_repository.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   final Customer customer;
@@ -107,6 +112,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                       _buildProfileCard(context),
                       const SizedBox(height: 16),
                       _buildTabBar(),
+                      const SizedBox(height: 16),
+                      _buildLifecyclePanel(),
                       _selectedTabIndex == 0
                           ? _buildHistoryList(context)
                           : _buildUpcomingList(context),
@@ -654,6 +661,184 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     );
   }
 
+  Widget _buildLifecyclePanel() {
+    final operationsRepo = OperationsRepository();
+    return FutureBuilder<_CustomerLifecycleData>(
+      future: _loadCustomerLifecycle(operationsRepo),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: LinearProgressIndicator(minHeight: 2),
+          );
+        }
+        final data = snapshot.data ?? const _CustomerLifecycleData();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SemiBoldTextView(text: 'Customer Timeline', fontSize: 16),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _LifecycleStat(
+                        label: 'Balance Due',
+                        value: '₹${data.balanceDue.toStringAsFixed(0)}',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _LifecycleStat(
+                        label: 'AMC Left',
+                        value: '${data.remainingVisits}',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _LifecycleStat(
+                        label: 'Proofs',
+                        value: '${data.attachments.length}',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'RECENT COMMUNICATION',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF94A3B8),
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (data.logs.isEmpty)
+                  const Text(
+                    'No call, WhatsApp, or service-note timeline yet.',
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else
+                  ...data.logs
+                      .take(3)
+                      .map(
+                        (log) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF007FFF),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${log.channel} • ${log.createdBy}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      log.note,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                if (data.attachments.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'SERVICE PROOF',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: data.attachments
+                        .take(3)
+                        .map(
+                          (attachment) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              attachment.title,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<_CustomerLifecycleData> _loadCustomerLifecycle(
+    OperationsRepository operationsRepo,
+  ) async {
+    final invoices = await operationsRepo.getInvoices(
+      customerId: widget.customer.id,
+    );
+    final contracts = await operationsRepo.getContracts(
+      customerId: widget.customer.id,
+    );
+    final logs = await operationsRepo.getCommunicationLogs(
+      customerId: widget.customer.id,
+    );
+    final attachments = await operationsRepo.getAttachments(
+      customerId: widget.customer.id,
+    );
+    return _CustomerLifecycleData(
+      invoices: invoices,
+      contracts: contracts,
+      logs: logs,
+      attachments: attachments,
+    );
+  }
+
   Widget _buildBottomButton(BuildContext scaffoldContext) {
     return Positioned(
       bottom: 0,
@@ -857,4 +1042,61 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       },
     );
   }
+}
+
+class _LifecycleStat extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _LifecycleStat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF94A3B8),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CustomerLifecycleData {
+  final List<Invoice> invoices;
+  final List<AmcContract> contracts;
+  final List<CommunicationLog> logs;
+  final List<ServiceAttachment> attachments;
+
+  const _CustomerLifecycleData({
+    this.invoices = const [],
+    this.contracts = const [],
+    this.logs = const [],
+    this.attachments = const [],
+  });
+
+  double get balanceDue =>
+      invoices.fold<double>(0, (sum, invoice) => sum + invoice.balanceDue);
+
+  int get remainingVisits =>
+      contracts.fold<int>(0, (sum, contract) => sum + contract.visitsRemaining);
 }

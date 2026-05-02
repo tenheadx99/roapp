@@ -89,9 +89,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final role = _roleController.text.trim();
 
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is required.')));
       return;
     }
 
@@ -143,7 +143,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final newPasskey = _newPasskeyController.text.trim();
     final confirmPasskey = _confirmPasskeyController.text.trim();
 
-    if (currentPasskey.isEmpty || newPasskey.isEmpty || confirmPasskey.isEmpty) {
+    if (currentPasskey.isEmpty ||
+        newPasskey.isEmpty ||
+        confirmPasskey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Fill in all password fields.')),
       );
@@ -211,6 +213,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> _restoreBackup() async {
+    try {
+      final message = await DbExporter.restoreLatestBackup();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+      context.read<AuthBloc>().add(AuthStarted());
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _showBusinessProfileSheet() async {
+    final settingsCubit = context.read<SettingsCubit>();
+    final current = settingsCubit.state;
+    final nameController = TextEditingController(text: current.businessName);
+    final phoneController = TextEditingController(text: current.businessPhone);
+    final addressController = TextEditingController(
+      text: current.businessAddress,
+    );
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SemiBoldTextView(text: 'Business Profile', fontSize: 18),
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: nameController,
+                hintText: 'Business name',
+                prefixIcon: const Icon(Icons.storefront_outlined),
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: phoneController,
+                hintText: 'Business phone',
+                prefixIcon: const Icon(Icons.call_outlined),
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: addressController,
+                hintText: 'Business address',
+                prefixIcon: const Icon(Icons.location_on_outlined),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    await settingsCubit.setBusinessProfile(
+                      businessName: nameController.text.trim().isEmpty
+                          ? 'RO Service Manager'
+                          : nameController.text.trim(),
+                      businessPhone: phoneController.text.trim(),
+                      businessAddress: addressController.text.trim(),
+                    );
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Business profile updated.'),
+                      ),
+                    );
+                  },
+                  child: const Text('Save Business Profile'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -348,7 +439,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SemiBoldTextView(text: 'Local Profile', fontSize: 15),
+                        const SemiBoldTextView(
+                          text: 'Local Profile',
+                          fontSize: 15,
+                        ),
                         const SizedBox(height: 4),
                         SubRegularText(
                           text: 'Member ID: ${_currentUser.id}',
@@ -452,6 +546,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _restoreBackup,
+                      icon: const Icon(Icons.restore_page_outlined),
+                      label: const Text('Restore Latest Local Backup'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 28),
+                  const SemiBoldTextView(
+                    text: 'Workspace Settings',
+                    fontSize: 15,
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.storefront_outlined),
+                    title: const Text('Business Profile'),
+                    subtitle: Text(
+                      appSettings.businessPhone.trim().isEmpty
+                          ? appSettings.businessName
+                          : '${appSettings.businessName} • ${appSettings.businessPhone}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: _showBusinessProfileSheet,
+                  ),
+                  const Divider(height: 20),
+                  const LabelText(text: 'Language'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ThemeModeChip(
+                        label: 'English',
+                        icon: Icons.language_outlined,
+                        isSelected: appSettings.languageCode == 'en',
+                        onTap: () {
+                          context.read<SettingsCubit>().setLanguageCode('en');
+                        },
+                      ),
+                      _ThemeModeChip(
+                        label: 'Hindi',
+                        icon: Icons.translate_outlined,
+                        isSelected: appSettings.languageCode == 'hi',
+                        onTap: () {
+                          context.read<SettingsCubit>().setLanguageCode('hi');
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const LabelText(text: 'Date Format'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ThemeModeChip(
+                        label: 'dd MMM yyyy',
+                        icon: Icons.event_outlined,
+                        isSelected: appSettings.dateFormat == 'dd MMM yyyy',
+                        onTap: () {
+                          context.read<SettingsCubit>().setDateFormat(
+                            'dd MMM yyyy',
+                          );
+                        },
+                      ),
+                      _ThemeModeChip(
+                        label: 'dd/MM/yyyy',
+                        icon: Icons.calendar_month_outlined,
+                        isSelected: appSettings.dateFormat == 'dd/MM/yyyy',
+                        onTap: () {
+                          context.read<SettingsCubit>().setDateFormat(
+                            'dd/MM/yyyy',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const LabelText(text: 'Backup Policy'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ThemeModeChip(
+                        label: 'Manual',
+                        icon: Icons.backup_outlined,
+                        isSelected: appSettings.backupPolicy == 'Manual',
+                        onTap: () {
+                          context.read<SettingsCubit>().setBackupPolicy(
+                            'Manual',
+                          );
+                        },
+                      ),
+                      _ThemeModeChip(
+                        label: 'Manual + Before Clear',
+                        icon: Icons.security_outlined,
+                        isSelected:
+                            appSettings.backupPolicy == 'Manual + Before Clear',
+                        onTap: () {
+                          context.read<SettingsCubit>().setBackupPolicy(
+                            'Manual + Before Clear',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -496,7 +707,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.tips_and_updates_outlined, color: Color(0xFF007FFF)),
+                  Icon(
+                    Icons.tips_and_updates_outlined,
+                    color: Color(0xFF007FFF),
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -627,7 +841,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: const Icon(Icons.logout, color: Colors.red),
               label: const Text(
                 'Logout',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
@@ -693,7 +910,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return _ProfileSummary(
       customerCount: customers.length,
-      openRequests: requests.where((request) => request.status != 'completed').length,
+      openRequests: requests
+          .where((request) => request.status != 'completed')
+          .length,
       stockUnits: inventory.fold<int>(0, (sum, item) => sum + item.stock),
     );
   }
@@ -779,11 +998,7 @@ class _ThemeModeChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       label: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          const SizedBox(width: 6),
-          Text(label),
-        ],
+        children: [Icon(icon, size: 16), const SizedBox(width: 6), Text(label)],
       ),
       selectedColor: const Color(0xFFDBEAFE),
       side: BorderSide(

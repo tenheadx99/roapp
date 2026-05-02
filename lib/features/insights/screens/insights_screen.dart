@@ -62,7 +62,8 @@ class _InsightsView extends StatelessWidget {
                   _buildSalesTrends(context, state),
                   _buildServiceLoad(context, state),
                   _buildInventoryUsage(context, state),
-                  _buildCriticalAlerts(context),
+                  _buildPerformanceHighlights(context, state),
+                  _buildCriticalAlerts(context, state),
                 ],
               ),
             );
@@ -151,9 +152,7 @@ class _InsightsView extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark ? theme.cardColor : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF1F2937)
-        : Colors.grey.shade100;
+    final borderColor = isDark ? const Color(0xFF1F2937) : Colors.grey.shade100;
     final titleColor = isDark
         ? const Color(0xFFCBD5E1)
         : const Color(0xFF64748B);
@@ -202,9 +201,9 @@ class _InsightsView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    '+12.4% vs prev.',
-                    style: TextStyle(
+                  Text(
+                    'Collected in ${state.activeTimeRange.toLowerCase()}',
+                    style: const TextStyle(
                       color: Colors.green,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -256,9 +255,9 @@ class _InsightsView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    '-15% improvement',
-                    style: TextStyle(
+                  Text(
+                    'Across ${state.serviceLoad.length} technicians',
+                    style: const TextStyle(
                       color: Color(0xFF007FFF),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -277,9 +276,7 @@ class _InsightsView extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = isDark ? theme.cardColor : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF1F2937)
-        : Colors.grey.shade100;
+    final borderColor = isDark ? const Color(0xFF1F2937) : Colors.grey.shade100;
     final subtle = isDark ? const Color(0xFF94A3B8) : Colors.grey.shade500;
     final spots = <BarChartGroupData>[];
     int i = 0;
@@ -316,10 +313,7 @@ class _InsightsView extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -410,10 +404,7 @@ class _InsightsView extends StatelessWidget {
           color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade100,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -518,10 +509,7 @@ class _InsightsView extends StatelessWidget {
           color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade100,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4),
         ],
       ),
       child: Column(
@@ -545,7 +533,9 @@ class _InsightsView extends StatelessWidget {
                           if (entry['color'] == '#007fff') {
                             color = const Color(0xFF007FFF);
                           } else if (entry['color'] == '#007fff66')
-                            color = const Color(0xFF007FFF).withValues(alpha: 0.6);
+                            color = const Color(
+                              0xFF007FFF,
+                            ).withValues(alpha: 0.6);
                           else
                             color = const Color(0xFFF1F5F9);
 
@@ -558,19 +548,19 @@ class _InsightsView extends StatelessWidget {
                         }).toList(),
                       ),
                     ),
-                    const Center(
+                    Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '142',
-                            style: TextStyle(
+                            '${state.inventoryUsage.length}',
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          Text(
-                            'UNITS',
+                          const Text(
+                            'CATS',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -630,9 +620,70 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildCriticalAlerts(BuildContext context) {
+  Widget _buildPerformanceHighlights(
+    BuildContext context,
+    InsightsLoaded state,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SemiBoldTextView(text: 'Business Intelligence', fontSize: 18),
+            const SizedBox(height: 16),
+            _MetricList(
+              title: 'Revenue by Technician',
+              entries: state.revenueByTechnician
+                  .take(4)
+                  .map(
+                    (entry) =>
+                        '${entry['name']}: ₹${(entry['value'] as double).toStringAsFixed(0)}',
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            _MetricList(
+              title: 'Top Replaced Parts',
+              entries: state.topParts
+                  .map((entry) => '${entry['name']}: ${entry['value']} jobs')
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            _MetricList(
+              title: 'Repeat Service Customers',
+              entries: state.repeatCustomers
+                  .map((entry) => '${entry['name']}: ${entry['value']} visits')
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            _MetricList(
+              title: 'Supplier Performance',
+              entries: state.supplierPerformance
+                  .map(
+                    (entry) =>
+                        '${entry['name']}: ${((entry['leadDays'] as double)).toStringAsFixed(1)} days avg lead • ${entry['orders']} orders',
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCriticalAlerts(BuildContext context, InsightsLoaded state) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final topRepeat = state.repeatCustomers.isNotEmpty
+        ? state.repeatCustomers.first
+        : null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -677,7 +728,9 @@ class _InsightsView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Low Stock: Pre-filter',
+                        topRepeat == null
+                            ? 'Repeat Service Watch'
+                            : 'Repeat Service Watch: ${topRepeat['name']}',
                         style: TextStyle(
                           color: Colors.red.shade900,
                           fontSize: 14,
@@ -685,7 +738,9 @@ class _InsightsView extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Only 5 units remaining in main hub.',
+                        topRepeat == null
+                            ? 'No repeat-customer hotspots yet.'
+                            : '${topRepeat['value']} service visits logged for this customer.',
                         style: TextStyle(
                           color: Colors.red.shade700,
                           fontSize: 12,
@@ -738,11 +793,11 @@ class _InsightsView extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '3 services in Downtown are pending > 24hrs.',
+                        state.slaBreaches == 0
+                            ? 'No scheduled jobs are currently beyond the 24-hour threshold.'
+                            : '${state.slaBreaches} services are pending for more than 24 hours.',
                         style: TextStyle(
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : Colors.grey,
+                          color: isDark ? const Color(0xFF94A3B8) : Colors.grey,
                           fontSize: 12,
                         ),
                       ),
@@ -759,6 +814,41 @@ class _InsightsView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MetricList extends StatelessWidget {
+  final String title;
+  final List<String> entries;
+
+  const _MetricList({required this.title, required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        if (entries.isEmpty)
+          Text(
+            'No data available yet.',
+            style: Theme.of(context).textTheme.bodySmall,
+          )
+        else
+          ...entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(entry),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -19,10 +19,12 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>(
-          create: (_) => AuthBloc(repository: AuthRepository())..add(AuthStarted()),
+          create: (_) =>
+              AuthBloc(repository: AuthRepository())..add(AuthStarted()),
         ),
         BlocProvider<SettingsCubit>(
-          create: (_) => SettingsCubit(repository: SettingsRepository())..loadSettings(),
+          create: (_) =>
+              SettingsCubit(repository: SettingsRepository())..loadSettings(),
         ),
       ],
       child: BlocBuilder<SettingsCubit, AppSettings>(
@@ -51,9 +53,18 @@ ThemeData _buildLightTheme() {
     colorScheme: scheme,
     useMaterial3: true,
     scaffoldBackgroundColor: const Color(0xFFF5F7F8),
-    snackBarTheme: const SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
+    cardColor: Colors.white,
+    dividerColor: const Color(0xFFE2E8F0),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
     ),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
 }
 
@@ -72,8 +83,16 @@ ThemeData _buildDarkTheme() {
       foregroundColor: Colors.white,
     ),
     cardColor: const Color(0xFF111827),
-    snackBarTheme: const SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
+    dividerColor: const Color(0xFF1F2937),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFF111827),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: Color(0xFF334155)),
+      ),
     ),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
   );
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:roapp/core/database/database_helper.dart';
 import 'package:roapp/features/inventory/models/inventory_item.dart';
 import 'package:roapp/features/inventory/repositories/inventory_repository.dart';
@@ -30,7 +31,7 @@ void main() {
         lowStockThreshold: 10,
         category: 'Filters',
       );
-      
+
       await inventoryRepo.addInventoryItem(item);
 
       // Get inventory
@@ -41,7 +42,7 @@ void main() {
       // Update item
       final updatedItem = item.copyWith(stock: 100);
       await inventoryRepo.updateInventoryItem(updatedItem);
-      
+
       final updatedInventory = await inventoryRepo.getInventory();
       expect(updatedInventory.first.stock, 100);
 

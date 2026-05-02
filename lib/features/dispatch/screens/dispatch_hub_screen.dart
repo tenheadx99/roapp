@@ -65,8 +65,9 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
               _buildTabs(),
               Expanded(
                 child: switch (state) {
-                  DispatchLoading() || DispatchInitial() =>
-                    const Center(child: CircularProgressIndicator()),
+                  DispatchLoading() || DispatchInitial() => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
                   DispatchError() => Center(child: Text(state.message)),
                   DispatchLoaded() => _buildRequestList(
                     state.filteredRequests,
@@ -109,7 +110,11 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     final isDark = theme.brightness == Brightness.dark;
     final selectedDate = state?.selectedDate;
     final anchorDate = selectedDate ?? DateTime.now();
-    final startDate = DateTime(anchorDate.year, anchorDate.month, anchorDate.day);
+    final startDate = DateTime(
+      anchorDate.year,
+      anchorDate.month,
+      anchorDate.day,
+    );
     final days = List.generate(
       7,
       (index) => startDate.add(Duration(days: index)),
@@ -170,7 +175,9 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                   labelBottom: 'Dates',
                   isActive: selectedDate == null,
                   onTap: () {
-                    context.read<DispatchBloc>().add(const SelectDispatchDate(null));
+                    context.read<DispatchBloc>().add(
+                      const SelectDispatchDate(null),
+                    );
                   },
                 ),
                 const SizedBox(width: 12),
@@ -187,7 +194,9 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       labelBottom: date.day.toString().padLeft(2, '0'),
                       isActive: isActive,
                       onTap: () {
-                        context.read<DispatchBloc>().add(SelectDispatchDate(date));
+                        context.read<DispatchBloc>().add(
+                          SelectDispatchDate(date),
+                        );
                       },
                     ),
                   );
@@ -466,7 +475,8 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                     Expanded(
                       child: Text(
                         _friendlyDate(
-                          DateTime.tryParse(req.scheduledFor!) ?? DateTime.now(),
+                          DateTime.tryParse(req.scheduledFor!) ??
+                              DateTime.now(),
                         ),
                         style: const TextStyle(
                           fontSize: 12,
@@ -544,7 +554,8 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                           height: 36,
                           child: CustomButton(
                             text: AppStrings.assign,
-                            onPressed: () => _showAssignBottomSheet(context, req),
+                            onPressed: () =>
+                                _showAssignBottomSheet(context, req),
                             height: 36,
                             borderRadius: 8,
                           ),
@@ -614,7 +625,19 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    context.read<DispatchBloc>().add(DeleteServiceRequest(req.id));
+                    final bloc = context.read<DispatchBloc>();
+                    bloc.add(DeleteServiceRequest(req.id));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${req.customerName} request deleted.'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () {
+                            bloc.add(AddServiceRequest(req));
+                          },
+                        ),
+                      ),
+                    );
                   },
                   style: TextButton.styleFrom(foregroundColor: Colors.red),
                   child: const Text('Delete'),
@@ -663,7 +686,9 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
   }
 
   void _advanceRequest(BuildContext context, ServiceRequest request) {
-    final nextStatus = request.status == 'assigned' ? 'in_progress' : 'completed';
+    final nextStatus = request.status == 'assigned'
+        ? 'in_progress'
+        : 'completed';
     context.read<DispatchBloc>().add(
       UpdateServiceRequest(request.copyWith(status: nextStatus)),
     );

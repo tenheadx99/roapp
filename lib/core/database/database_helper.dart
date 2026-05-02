@@ -7,7 +7,7 @@ import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 6;
+  static const int dbVersion = 7;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -67,6 +67,14 @@ CREATE TABLE users (
 CREATE TABLE app_settings (
   key $idType,
   value $textType
+)
+''');
+
+    await db.execute('''
+CREATE TABLE schema_migrations (
+  version INTEGER PRIMARY KEY,
+  appliedAt $textType,
+  notes $textNullType
 )
 ''');
 
@@ -160,6 +168,96 @@ CREATE TABLE service_history (
 )
 ''');
 
+    await db.execute('''
+CREATE TABLE invoices (
+  id $idType,
+  customerId $textType,
+  invoiceNumber $textType,
+  issueDate $textType,
+  dueDate $textType,
+  totalAmount $doubleType,
+  paidAmount $doubleType,
+  status $textType,
+  notes $textNullType,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE amc_contracts (
+  id $idType,
+  customerId $textType,
+  contractName $textType,
+  startDate $textType,
+  endDate $textType,
+  visitsIncluded $intType,
+  visitsUsed $intType,
+  amount $doubleType,
+  status $textType,
+  renewalReminderDate $textType,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE communication_logs (
+  id $idType,
+  customerId $textType,
+  channel $textType,
+  note $textType,
+  createdAt $textType,
+  createdBy $textType,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE purchase_orders (
+  id $idType,
+  supplierId $textType,
+  poNumber $textType,
+  createdAt $textType,
+  expectedDate $textType,
+  receivedDate $textNullType,
+  status $textType,
+  totalAmount $doubleType,
+  leadDays $intType,
+  notes $textNullType,
+  FOREIGN KEY (supplierId) REFERENCES suppliers (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE technician_schedules (
+  id $idType,
+  technicianId $textType,
+  scheduleDate $textType,
+  routeArea $textType,
+  plannedStops $textType,
+  checklist $textType,
+  leaveStatus $textType,
+  FOREIGN KEY (technicianId) REFERENCES technicians (id) ON DELETE CASCADE
+)
+''');
+
+    await db.execute('''
+CREATE TABLE service_attachments (
+  id $idType,
+  customerId $textType,
+  serviceRequestId $textNullType,
+  type $textType,
+  title $textType,
+  filePath $textType,
+  createdAt $textType,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+    await _recordMigration(
+      db,
+      version,
+      'Initial schema with operations and settings tables.',
+    );
     await _ensureDefaultAdmin(db);
   }
 
@@ -208,7 +306,8 @@ CREATE TABLE product_categories (
 
       for (final name in categories) {
         await db.insert('product_categories', {
-          'id': 'cat-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}',
+          'id':
+              'cat-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}',
           'name': name,
         }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
@@ -237,6 +336,107 @@ CREATE TABLE app_settings (
       await db.delete('technicians');
       await db.delete('service_history');
       await db.delete('product_categories');
+    }
+
+    if (oldVersion < 7) {
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version INTEGER PRIMARY KEY,
+  appliedAt TEXT NOT NULL,
+  notes TEXT
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY,
+  customerId TEXT NOT NULL,
+  invoiceNumber TEXT NOT NULL,
+  issueDate TEXT NOT NULL,
+  dueDate TEXT NOT NULL,
+  totalAmount REAL NOT NULL,
+  paidAmount REAL NOT NULL,
+  status TEXT NOT NULL,
+  notes TEXT,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS amc_contracts (
+  id TEXT PRIMARY KEY,
+  customerId TEXT NOT NULL,
+  contractName TEXT NOT NULL,
+  startDate TEXT NOT NULL,
+  endDate TEXT NOT NULL,
+  visitsIncluded INTEGER NOT NULL,
+  visitsUsed INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  status TEXT NOT NULL,
+  renewalReminderDate TEXT NOT NULL,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS communication_logs (
+  id TEXT PRIMARY KEY,
+  customerId TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  note TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  createdBy TEXT NOT NULL,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id TEXT PRIMARY KEY,
+  supplierId TEXT NOT NULL,
+  poNumber TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  expectedDate TEXT NOT NULL,
+  receivedDate TEXT,
+  status TEXT NOT NULL,
+  totalAmount REAL NOT NULL,
+  leadDays INTEGER NOT NULL,
+  notes TEXT,
+  FOREIGN KEY (supplierId) REFERENCES suppliers (id) ON DELETE CASCADE
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS technician_schedules (
+  id TEXT PRIMARY KEY,
+  technicianId TEXT NOT NULL,
+  scheduleDate TEXT NOT NULL,
+  routeArea TEXT NOT NULL,
+  plannedStops TEXT NOT NULL,
+  checklist TEXT NOT NULL,
+  leaveStatus TEXT NOT NULL,
+  FOREIGN KEY (technicianId) REFERENCES technicians (id) ON DELETE CASCADE
+)
+''');
+
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS service_attachments (
+  id TEXT PRIMARY KEY,
+  customerId TEXT NOT NULL,
+  serviceRequestId TEXT,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  filePath TEXT NOT NULL,
+  createdAt TEXT NOT NULL,
+  FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
+)
+''');
+
+      await _recordMigration(
+        db,
+        7,
+        'Added operations workflows, attachments, and migration audit tracking.',
+      );
     }
 
     await _ensureDefaultAdmin(db);
@@ -271,9 +471,18 @@ CREATE TABLE app_settings (
         'phone': '+91 9876543210',
         'role': 'Operations Admin',
       },
-      where: 'id = ? AND (name IS NULL OR TRIM(name) = \'\' OR phone IS NULL OR TRIM(phone) = \'\' OR role IS NULL OR TRIM(role) = \'\')',
+      where:
+          'id = ? AND (name IS NULL OR TRIM(name) = \'\' OR phone IS NULL OR TRIM(phone) = \'\' OR role IS NULL OR TRIM(role) = \'\')',
       whereArgs: ['default-admin'],
     );
+  }
+
+  Future<void> _recordMigration(Database db, int version, String notes) async {
+    await db.insert('schema_migrations', {
+      'version': version,
+      'appliedAt': DateTime.now().toIso8601String(),
+      'notes': notes,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   Future<void> close() async {
@@ -300,6 +509,12 @@ CREATE TABLE app_settings (
       await txn.delete('suppliers');
       await txn.delete('technicians');
       await txn.delete('service_history');
+      await txn.delete('invoices');
+      await txn.delete('amc_contracts');
+      await txn.delete('communication_logs');
+      await txn.delete('purchase_orders');
+      await txn.delete('technician_schedules');
+      await txn.delete('service_attachments');
     });
 
     if (!includeUsers) {

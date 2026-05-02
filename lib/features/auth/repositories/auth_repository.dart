@@ -74,17 +74,34 @@ class AuthRepository {
 
   Future<User?> getUserById(String id) async {
     final db = await dbHelper.database;
-    final maps = await db.query('users', where: 'id = ?', whereArgs: [id], limit: 1);
+    final maps = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (maps.isEmpty) return null;
     return User.fromMap(maps.first);
   }
 
   Future<User> updateUserProfile(User user) async {
     final db = await dbHelper.database;
+    final normalizedEmail = user.email.trim().toLowerCase();
+    final existing = await db.query(
+      'users',
+      columns: ['id'],
+      where: 'email = ? AND id != ?',
+      whereArgs: [normalizedEmail, user.id],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      throw Exception('That email is already used by another account.');
+    }
+
     await db.update(
       'users',
       {
-        'email': user.email.trim().toLowerCase(),
+        'email': normalizedEmail,
         'name': user.name.trim(),
         'phone': user.phone.trim(),
         'role': user.role.trim(),

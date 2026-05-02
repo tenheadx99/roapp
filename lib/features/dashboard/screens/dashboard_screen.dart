@@ -14,6 +14,8 @@ import '../../dispatch/screens/dispatch_hub_screen.dart';
 import '../../insights/screens/insights_screen.dart';
 import '../../inventory/screens/inventory_screen.dart';
 import '../../notifications/screens/notifications_screen.dart';
+import '../../operations/screens/operations_center_screen.dart';
+import '../../search/screens/global_search_screen.dart';
 import '../../settings/bloc/settings_cubit.dart';
 import '../../supplier/screens/supplier_directory_screen.dart';
 import '../../technician/screens/technicians_screen.dart';
@@ -37,7 +39,9 @@ class DashboardScreen extends StatelessWidget {
         appBar: AppBar(
           title: BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
-              final user = authState is AuthAuthenticated ? authState.user : null;
+              final user = authState is AuthAuthenticated
+                  ? authState.user
+                  : null;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -70,7 +74,20 @@ class DashboardScreen extends StatelessWidget {
           elevation: 0,
           actions: [
             IconButton(
-              icon: const Icon(Icons.download_rounded, color: Color(0xFF007FFF)),
+              icon: Icon(Icons.search_rounded, color: foreground),
+              tooltip: 'Global Search',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.download_rounded,
+                color: Color(0xFF007FFF),
+              ),
               tooltip: 'Download Database',
               onPressed: () async {
                 try {
@@ -89,7 +106,10 @@ class DashboardScreen extends StatelessWidget {
             ),
             Builder(
               builder: (buttonContext) => IconButton(
-                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                icon: const Icon(
+                  Icons.delete_sweep_outlined,
+                  color: Colors.red,
+                ),
                 tooltip: 'Clear All Data',
                 onPressed: () {
                   bool shouldBackup = buttonContext
@@ -108,13 +128,21 @@ class DashboardScreen extends StatelessWidget {
                           children: [
                             const Text(
                               'This action will delete all customers, inventory, and history. It cannot be undone.',
-                              style: TextStyle(fontSize: 13, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
                             ),
                             const SizedBox(height: 20),
                             CheckboxListTile(
                               value: shouldBackup,
-                              onChanged: (val) => setDialogState(() => shouldBackup = val ?? false),
-                              title: const Text('Backup before deleting', style: TextStyle(fontSize: 14)),
+                              onChanged: (val) => setDialogState(
+                                () => shouldBackup = val ?? false,
+                              ),
+                              title: const Text(
+                                'Backup before deleting',
+                                style: TextStyle(fontSize: 14),
+                              ),
                               contentPadding: EdgeInsets.zero,
                               controlAffinity: ListTileControlAffinity.leading,
                             ),
@@ -137,22 +165,30 @@ class DashboardScreen extends StatelessWidget {
                             child: const Text('Cancel'),
                           ),
                           ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
                             onPressed: () async {
                               // Verify password (matching the default credentials)
                               if (passwordController.text ==
                                   AuthRepository.defaultAdminPasskey) {
                                 if (shouldBackup) {
                                   try {
-                                    final message = await DbExporter.exportDatabase();
+                                    final message =
+                                        await DbExporter.exportDatabase();
                                     if (dialogContext.mounted) {
-                                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        dialogContext,
+                                      ).showSnackBar(
                                         SnackBar(content: Text(message)),
                                       );
                                     }
                                   } catch (e) {
                                     if (dialogContext.mounted) {
-                                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        dialogContext,
+                                      ).showSnackBar(
                                         SnackBar(content: Text(e.toString())),
                                       );
                                     }
@@ -160,14 +196,21 @@ class DashboardScreen extends StatelessWidget {
                                   }
                                 }
                                 if (buttonContext.mounted) {
-                                  buttonContext.read<DashboardBloc>().add(DashboardDataClearRequested());
+                                  buttonContext.read<DashboardBloc>().add(
+                                    DashboardDataClearRequested(),
+                                  );
                                 }
                                 if (dialogContext.mounted) {
                                   Navigator.pop(dialogContext);
                                 }
                               } else {
-                                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                                  const SnackBar(content: Text('Incorrect password!'), backgroundColor: Colors.red),
+                                ScaffoldMessenger.of(
+                                  dialogContext,
+                                ).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Incorrect password!'),
+                                    backgroundColor: Colors.red,
+                                  ),
                                 );
                               }
                             },
@@ -194,7 +237,9 @@ class DashboardScreen extends StatelessWidget {
             const SizedBox(width: 8),
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, authState) {
-                final user = authState is AuthAuthenticated ? authState.user : null;
+                final user = authState is AuthAuthenticated
+                    ? authState.user
+                    : null;
                 return InkWell(
                   borderRadius: BorderRadius.circular(24),
                   onTap: user == null
@@ -254,6 +299,10 @@ class _MobileDashboardView extends StatelessWidget {
         } else if (state is DashboardError) {
           return Center(child: Text(state.message));
         } else if (state is DashboardLoaded) {
+          final isEmpty =
+              (state.stats['totalCustomers'] == '0') &&
+              (state.stats['totalInventory'] == '0') &&
+              state.scheduledServices.isEmpty;
           return RefreshIndicator(
             onRefresh: () async {
               context.read<DashboardBloc>().add(DashboardDataRequested());
@@ -266,6 +315,10 @@ class _MobileDashboardView extends StatelessWidget {
                 children: [
                   _buildWelcomeBanner(context, state.stats),
                   const SizedBox(height: 20),
+                  if (isEmpty) ...[
+                    _buildOnboardingCard(context),
+                    const SizedBox(height: 20),
+                  ],
                   _buildStatsGrid(state.stats, isDesktop: false),
                   const SizedBox(height: 32),
                   _buildQuickActions(context),
@@ -299,6 +352,10 @@ class _DesktopDashboardView extends StatelessWidget {
         } else if (state is DashboardError) {
           return Center(child: Text(state.message));
         } else if (state is DashboardLoaded) {
+          final isEmpty =
+              (state.stats['totalCustomers'] == '0') &&
+              (state.stats['totalInventory'] == '0') &&
+              state.scheduledServices.isEmpty;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -306,6 +363,10 @@ class _DesktopDashboardView extends StatelessWidget {
               children: [
                 _buildWelcomeBanner(context, state.stats, isDesktop: true),
                 const SizedBox(height: 20),
+                if (isEmpty) ...[
+                  _buildOnboardingCard(context, isDesktop: true),
+                  const SizedBox(height: 20),
+                ],
                 _buildStatsGrid(state.stats, isDesktop: true),
                 const SizedBox(height: 32),
                 Row(
@@ -320,9 +381,14 @@ class _DesktopDashboardView extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
-                            child: _buildScheduledServices(context, state.scheduledServices),
+                            child: _buildScheduledServices(
+                              context,
+                              state.scheduledServices,
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Container(
@@ -330,7 +396,9 @@ class _DesktopDashboardView extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
                             child: _buildRecentActivity(
                               context,
@@ -487,6 +555,16 @@ Widget _buildWelcomeActions(BuildContext context) {
         },
       ),
       _WelcomeActionChip(
+        icon: Icons.search_rounded,
+        label: 'Search',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+          );
+        },
+      ),
+      _WelcomeActionChip(
         icon: Icons.notifications_none,
         label: 'Notifications',
         onTap: () {
@@ -594,6 +672,14 @@ Widget _buildQuickActions(BuildContext context) {
       ),
     ),
     _QuickActionItem(
+      icon: Icons.receipt_long_outlined,
+      label: 'Operations',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const OperationsCenterScreen()),
+      ),
+    ),
+    _QuickActionItem(
       icon: Icons.insights_outlined,
       label: 'Insights',
       onTap: () => Navigator.push(
@@ -638,7 +724,10 @@ Widget _buildQuickActions(BuildContext context) {
   );
 }
 
-Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServices) {
+Widget _buildScheduledServices(
+  BuildContext context,
+  List<dynamic> scheduledServices,
+) {
   final top5Scheduled = scheduledServices.take(5).toList();
 
   return Column(
@@ -702,7 +791,11 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
                         color: Colors.blue.shade200.withValues(alpha: 0.5),
                       ),
                     ),
-                    child: Icon(Icons.build_circle_outlined, color: Colors.blue.shade600, size: 20),
+                    child: Icon(
+                      Icons.build_circle_outlined,
+                      color: Colors.blue.shade600,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -714,7 +807,9 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
                           fontSize: 14,
                         ),
                         const SizedBox(height: 2),
-                        SubRegularText(text: 'Customer: ${service['customerName']}'),
+                        SubRegularText(
+                          text: 'Customer: ${service['customerName']}',
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -729,16 +824,23 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
                             const SizedBox(width: 12),
                             if (service['status'] != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isPending ? Colors.orange.shade50 : Colors.green.shade50,
+                                  color: isPending
+                                      ? Colors.orange.shade50
+                                      : Colors.green.shade50,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
                                   statusLabel,
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: isPending ? Colors.orange.shade700 : Colors.green.shade700,
+                                    color: isPending
+                                        ? Colors.orange.shade700
+                                        : Colors.green.shade700,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -886,7 +988,9 @@ void _showQuickCreateSheet(BuildContext context) {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const CustomerListScreen(),
+                    ),
                   );
                 },
               ),
@@ -897,7 +1001,9 @@ void _showQuickCreateSheet(BuildContext context) {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const DispatchHubScreen(),
+                    ),
                   );
                 },
               ),
@@ -909,6 +1015,19 @@ void _showQuickCreateSheet(BuildContext context) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: const Text('Invoice / AMC / PO'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const OperationsCenterScreen(),
+                    ),
                   );
                 },
               ),
@@ -931,6 +1050,102 @@ void _showQuickCreateSheet(BuildContext context) {
       );
     },
   );
+}
+
+Widget _buildOnboardingCard(BuildContext context, {bool isDesktop = false}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: const Color(0xFFBFDBFE)),
+    ),
+    child: isDesktop
+        ? Row(
+            children: [
+              const Expanded(child: _OnboardingCopy()),
+              const SizedBox(width: 20),
+              _OnboardingActions(),
+            ],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _OnboardingCopy(),
+              SizedBox(height: 16),
+              _OnboardingActions(),
+            ],
+          ),
+  );
+}
+
+class _OnboardingCopy extends StatelessWidget {
+  const _OnboardingCopy();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Set up your first workflow',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Dummy data is gone, so this space starts clean. Create your first customer, product category, or service request to turn the dashboard into a live operations view.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ],
+    );
+  }
+}
+
+class _OnboardingActions extends StatelessWidget {
+  const _OnboardingActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        FilledButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+            );
+          },
+          icon: const Icon(Icons.people_outline),
+          label: const Text('First Customer'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InventoryScreen()),
+            );
+          },
+          icon: const Icon(Icons.category_outlined),
+          label: const Text('First Category'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+            );
+          },
+          icon: const Icon(Icons.build_outlined),
+          label: const Text('First Request'),
+        ),
+      ],
+    );
+  }
 }
 
 class _QuickActionBtn extends StatelessWidget {

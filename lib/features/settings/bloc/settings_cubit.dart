@@ -28,4 +28,38 @@ class SettingsCubit extends Cubit<AppSettings> {
     await repository.updateAutoBackupEnabled(enabled);
     emit(state.copyWith(autoBackupEnabled: enabled));
   }
+
+  Future<void> setLanguageCode(String languageCode) async {
+    await repository.updateLanguageCode(languageCode);
+    emit(state.copyWith(languageCode: languageCode));
+  }
+
+  Future<void> setDateFormat(String dateFormat) async {
+    await repository.updateDateFormat(dateFormat);
+    emit(state.copyWith(dateFormat: dateFormat));
+  }
+
+  Future<void> setBusinessProfile({
+    required String businessName,
+    required String businessPhone,
+    required String businessAddress,
+  }) async {
+    await repository.updateBusinessProfile(
+      businessName: businessName,
+      businessPhone: businessPhone,
+      businessAddress: businessAddress,
+    );
+    emit(
+      state.copyWith(
+        businessName: businessName,
+        businessPhone: businessPhone,
+        businessAddress: businessAddress,
+      ),
+    );
+  }
+
+  Future<void> setBackupPolicy(String value) async {
+    await repository.updateBackupPolicy(value);
+    emit(state.copyWith(backupPolicy: value));
+  }
 }

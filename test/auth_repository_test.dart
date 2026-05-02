@@ -26,7 +26,10 @@ void main() {
       expect(await authRepo.userExists(), false);
 
       // Register
-      final registered = await authRepo.registerUser(email: email, passkey: passkey);
+      final registered = await authRepo.registerUser(
+        email: email,
+        passkey: passkey,
+      );
       expect(registered, true);
 
       // Test userExists is true
@@ -36,10 +39,14 @@ void main() {
       final user = await authRepo.loginWithPasskey(email, passkey);
       expect(user, isNotNull);
       expect(user!.email, email);
+      expect(await authRepo.getPersistedUser(), isNotNull);
 
       // Login failure (wrong passkey)
       final wrongUser = await authRepo.loginWithPasskey(email, 'wrong-passkey');
       expect(wrongUser, isNull);
+
+      await authRepo.clearPersistedSession();
+      expect(await authRepo.getPersistedUser(), isNull);
     });
   });
 }
