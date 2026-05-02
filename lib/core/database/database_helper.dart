@@ -8,7 +8,7 @@ import 'package:roapp/core/database/dummy_data.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 3;
+  static const int dbVersion = 4;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -57,7 +57,10 @@ class DatabaseHelper {
 CREATE TABLE users (
   id $idType,
   email $textType UNIQUE,
-  passkey $textType
+  passkey $textType,
+  name $textNullType,
+  phone $textNullType,
+  role $textNullType
 )
 ''');
 
@@ -206,6 +209,12 @@ CREATE TABLE product_categories (
       }
     }
 
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE users ADD COLUMN name TEXT');
+      await db.execute('ALTER TABLE users ADD COLUMN phone TEXT');
+      await db.execute('ALTER TABLE users ADD COLUMN role TEXT');
+    }
+
     await _ensureDefaultAdmin(db);
   }
 
@@ -225,8 +234,23 @@ CREATE TABLE product_categories (
         'id': 'default-admin',
         'email': 'admin@roservice.com',
         'passkey': 'password123',
+        'name': 'Ramesh Admin',
+        'phone': '+91 9876543210',
+        'role': 'Operations Admin',
       });
+      return;
     }
+
+    await db.update(
+      'users',
+      {
+        'name': 'Ramesh Admin',
+        'phone': '+91 9876543210',
+        'role': 'Operations Admin',
+      },
+      where: 'id = ? AND (name IS NULL OR TRIM(name) = \'\' OR phone IS NULL OR TRIM(phone) = \'\' OR role IS NULL OR TRIM(role) = \'\')',
+      whereArgs: ['default-admin'],
+    );
   }
 
   Future<void> close() async {

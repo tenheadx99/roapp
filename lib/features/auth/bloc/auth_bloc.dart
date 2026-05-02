@@ -23,6 +23,15 @@ class LoginRequested extends AuthEvent {
 
 class LogoutRequested extends AuthEvent {}
 
+class CurrentUserUpdated extends AuthEvent {
+  final User user;
+
+  const CurrentUserUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
+
 // --- States ---
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -64,6 +73,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<CurrentUserUpdated>(_onCurrentUserUpdated);
   }
 
   void _onLoginRequested(LoginRequested event, Emitter<AuthState> emit) async {
@@ -97,5 +107,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) {
     emit(AuthUnauthenticated());
+  }
+
+  void _onCurrentUserUpdated(
+    CurrentUserUpdated event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(AuthAuthenticated(event.user));
   }
 }

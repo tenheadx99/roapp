@@ -5,7 +5,10 @@ import '../../../core/constants/app_strings.dart';
 import '../../../widgets/responsive_layout.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/models/user.dart';
 import '../../auth/repositories/auth_repository.dart';
+import '../../auth/screens/profile_screen.dart';
 import '../../customer/screens/customer_list_screen.dart';
 import '../../dispatch/screens/dispatch_hub_screen.dart';
 import '../../insights/screens/insights_screen.dart';
@@ -28,13 +31,34 @@ class DashboardScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7F8),
         appBar: AppBar(
-          title: const Text(
-            AppStrings.businessOverview,
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          title: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              final user = authState is AuthAuthenticated ? authState.user : null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    user == null
+                        ? AppStrings.businessOverview
+                        : 'Welcome, ${user.displayName.split(' ').first}',
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    AppStrings.businessOverview,
+                    style: TextStyle(
+                      color: const Color(0xFF64748B).withValues(alpha: 0.95),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           backgroundColor: Colors.white,
           elevation: 0,
@@ -132,11 +156,38 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
             const SizedBox(width: 8),
-            const CircleAvatar(
-              radius: 16,
-              backgroundImage: NetworkImage(
-                'https://i.pravatar.cc/150?u=a042581f4e29026024d',
-              ),
+            BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, authState) {
+                final user = authState is AuthAuthenticated ? authState.user : null;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: user == null
+                      ? null
+                      : () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: context.read<AuthBloc>(),
+                                child: ProfileScreen(user: user),
+                              ),
+                            ),
+                          );
+                        },
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: const Color(0xFF007FFF),
+                    child: Text(
+                      user?.initials ?? 'RM',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(width: 16),
           ],
@@ -167,22 +218,30 @@ class _MobileDashboardView extends StatelessWidget {
         } else if (state is DashboardError) {
           return Center(child: Text(state.message));
         } else if (state is DashboardLoaded) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatsGrid(state.stats, isDesktop: false),
-                const SizedBox(height: 32),
-                _buildQuickActions(context),
-                const SizedBox(height: 16),
-                _buildScheduledServices(context, state.scheduledServices),
-                const SizedBox(height: 16),
-                _buildRecentActivity(
-                  context,
-                  state.activities.cast<Map<String, dynamic>>(),
-                ),
-              ],
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<DashboardBloc>().add(DashboardDataRequested());
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildWelcomeBanner(context, state.stats),
+                  const SizedBox(height: 20),
+                  _buildStatsGrid(state.stats, isDesktop: false),
+                  const SizedBox(height: 32),
+                  _buildQuickActions(context),
+                  const SizedBox(height: 16),
+                  _buildScheduledServices(context, state.scheduledServices),
+                  const SizedBox(height: 16),
+                  _buildRecentActivity(
+                    context,
+                    state.activities.cast<Map<String, dynamic>>(),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -209,6 +268,8 @@ class _DesktopDashboardView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _buildWelcomeBanner(context, state.stats, isDesktop: true),
+                const SizedBox(height: 20),
                 _buildStatsGrid(state.stats, isDesktop: true),
                 const SizedBox(height: 32),
                 Row(
@@ -268,6 +329,141 @@ class _DesktopDashboardView extends StatelessWidget {
   }
 }
 
+Widget _buildWelcomeBanner(
+  BuildContext context,
+  Map<String, dynamic> stats, {
+  bool isDesktop = false,
+}) {
+  final authState = context.watch<AuthBloc>().state;
+  final user = authState is AuthAuthenticated ? authState.user : null;
+  final pendingService = stats['pendingService'] ?? '0';
+  final lowStock = stats['lowStock'] ?? '0';
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF007FFF), Color(0xFF38BDF8)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFF007FFF).withValues(alpha: 0.2),
+          blurRadius: 22,
+          offset: const Offset(0, 12),
+        ),
+      ],
+    ),
+    child: isDesktop
+        ? Row(
+            children: [
+              Expanded(
+                child: _buildWelcomeText(
+                  context,
+                  user,
+                  pendingService.toString(),
+                  lowStock.toString(),
+                ),
+              ),
+              const SizedBox(width: 20),
+              _buildWelcomeActions(context),
+            ],
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeText(
+                context,
+                user,
+                pendingService.toString(),
+                lowStock.toString(),
+              ),
+              const SizedBox(height: 16),
+              _buildWelcomeActions(context),
+            ],
+          ),
+  );
+}
+
+Widget _buildWelcomeText(
+  BuildContext context,
+  User? user,
+  String pendingService,
+  String lowStock,
+) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Good to see you${user == null ? '' : ', ${user.displayName.split(' ').first}'}',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'You currently have $pendingService active service requests and $lowStock low-stock alerts that may need attention.',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.92),
+          fontSize: 14,
+          height: 1.4,
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildWelcomeActions(BuildContext context) {
+  return Wrap(
+    spacing: 10,
+    runSpacing: 10,
+    children: [
+      _WelcomeActionChip(
+        icon: Icons.add_task_outlined,
+        label: 'Add Request',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+          );
+        },
+      ),
+      _WelcomeActionChip(
+        icon: Icons.person_outline,
+        label: 'View Profile',
+        onTap: () {
+          final authState = context.read<AuthBloc>().state;
+          if (authState is! AuthAuthenticated) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider.value(
+                value: context.read<AuthBloc>(),
+                child: ProfileScreen(user: authState.user),
+              ),
+            ),
+          );
+        },
+      ),
+      _WelcomeActionChip(
+        icon: Icons.notifications_none,
+        label: 'Notifications',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          );
+        },
+      ),
+    ],
+  );
+}
+
 Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
   return GridView.count(
     crossAxisCount: isDesktop ? 4 : 2,
@@ -319,68 +515,89 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
 }
 
 Widget _buildQuickActions(BuildContext context) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SemiBoldTextView(text: 'Quick Actions', fontSize: 16),
-      const SizedBox(height: 16),
-      Wrap(
-        spacing: 12,
-        runSpacing: 12,
+  final actions = [
+    _QuickActionItem(
+      icon: Icons.people_outline,
+      label: 'Customers',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+      ),
+    ),
+    _QuickActionItem(
+      icon: Icons.inventory_2_outlined,
+      label: 'Inventory',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const InventoryScreen()),
+      ),
+    ),
+    _QuickActionItem(
+      icon: Icons.precision_manufacturing_outlined,
+      label: 'Suppliers',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SupplierDirectoryScreen()),
+      ),
+    ),
+    _QuickActionItem(
+      icon: Icons.build_outlined,
+      label: 'Dispatch',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+      ),
+    ),
+    _QuickActionItem(
+      icon: Icons.engineering_outlined,
+      label: 'Technicians',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TechniciansScreen()),
+      ),
+    ),
+    _QuickActionItem(
+      icon: Icons.insights_outlined,
+      label: 'Insights',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const InsightsScreen()),
+      ),
+    ),
+  ];
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final maxWidth = constraints.maxWidth.isFinite
+          ? constraints.maxWidth
+          : MediaQuery.of(context).size.width - 32;
+      final crossAxisCount = maxWidth >= 360 ? 3 : 2;
+      final spacing = 12.0;
+      final buttonWidth =
+          (maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _QuickActionBtn(
-            icon: Icons.people_outline,
-            label: 'Customers',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CustomerListScreen()),
-            ),
-          ),
-          _QuickActionBtn(
-            icon: Icons.inventory_2_outlined,
-            label: 'Inventory',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const InventoryScreen()),
-            ),
-          ),
-          _QuickActionBtn(
-            icon: Icons.precision_manufacturing_outlined,
-            label: 'Suppliers',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const SupplierDirectoryScreen(),
-              ),
-            ),
-          ),
-          _QuickActionBtn(
-            icon: Icons.build_outlined,
-            label: 'Dispatch',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
-            ),
-          ),
-          _QuickActionBtn(
-            icon: Icons.engineering_outlined,
-            label: 'Technicians',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const TechniciansScreen()),
-            ),
-          ),
-          _QuickActionBtn(
-            icon: Icons.insights_outlined,
-            label: 'Insights',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const InsightsScreen()),
-            ),
+          const SemiBoldTextView(text: 'Quick Actions', fontSize: 16),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: actions
+                .map(
+                  (action) => _QuickActionBtn(
+                    icon: action.icon,
+                    label: action.label,
+                    width: buttonWidth,
+                    onTap: action.onTap,
+                  ),
+                )
+                .toList(),
           ),
         ],
-      ),
-    ],
+      );
+    },
   );
 }
 
@@ -444,7 +661,9 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.blue.shade200.withOpacity(0.5)),
+                      border: Border.all(
+                        color: Colors.blue.shade200.withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Icon(Icons.build_circle_outlined, color: Colors.blue.shade600, size: 20),
                   ),
@@ -570,7 +789,7 @@ Widget _buildRecentActivity(
                   decoration: BoxDecoration(
                     color: iconBg,
                     shape: BoxShape.circle,
-                    border: Border.all(color: iconColor.withOpacity(0.2)),
+                    border: Border.all(color: iconColor.withValues(alpha: 0.2)),
                   ),
                   child: Icon(iconToUse, color: iconColor, size: 20),
                 ),
@@ -680,11 +899,13 @@ void _showQuickCreateSheet(BuildContext context) {
 class _QuickActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
+  final double width;
   final VoidCallback onTap;
 
   const _QuickActionBtn({
     required this.icon,
     required this.label,
+    required this.width,
     required this.onTap,
   });
 
@@ -693,9 +914,7 @@ class _QuickActionBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width:
-            MediaQuery.of(context).size.width / 3 -
-            24, // 3 items per row approx
+        width: width,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -703,7 +922,7 @@ class _QuickActionBtn extends StatelessWidget {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -726,6 +945,60 @@ class _QuickActionBtn extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionItem {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+}
+
+class _WelcomeActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _WelcomeActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -763,7 +1036,7 @@ class _StatCard extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

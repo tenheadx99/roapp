@@ -32,6 +32,9 @@ class AppStrings {
   static const String notifications = "Notifications";
   static const String technicians = "Technicians";
   static const String viewAll = "View All";
+  static const String profile = "Profile";
+  static const String saveChanges = "Save Changes";
+  static const String logout = "Logout";
 
   // Dashboard Stats
   static const String totalInventory = 'Total Inventory';

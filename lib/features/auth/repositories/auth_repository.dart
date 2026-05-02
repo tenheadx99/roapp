@@ -21,6 +21,9 @@ class AuthRepository {
         'id': 'default-admin',
         'email': defaultAdminEmail,
         'passkey': defaultAdminPasskey,
+        'name': 'Ramesh Admin',
+        'phone': '+91 9876543210',
+        'role': 'Operations Admin',
       });
     }
   }
@@ -61,12 +64,66 @@ class AuthRepository {
     );
 
     if (maps.isNotEmpty) {
-      return User(
-        id: maps.first['id'] as String,
-        email: maps.first['email'] as String,
-      );
+      return User.fromMap(maps.first);
     }
     return null;
+  }
+
+  Future<User?> getUserById(String id) async {
+    final db = await dbHelper.database;
+    final maps = await db.query('users', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (maps.isEmpty) return null;
+    return User.fromMap(maps.first);
+  }
+
+  Future<User> updateUserProfile(User user) async {
+    final db = await dbHelper.database;
+    await db.update(
+      'users',
+      {
+        'email': user.email.trim().toLowerCase(),
+        'name': user.name.trim(),
+        'phone': user.phone.trim(),
+        'role': user.role.trim(),
+      },
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+
+    final updated = await getUserById(user.id);
+    return updated ?? user;
+  }
+
+  Future<void> updateUserPasskey({
+    required String userId,
+    required String currentPasskey,
+    required String newPasskey,
+  }) async {
+    final db = await dbHelper.database;
+    final trimmedCurrent = currentPasskey.trim();
+    final trimmedNew = newPasskey.trim();
+
+    if (trimmedNew.length < 6) {
+      throw Exception('New password must be at least 6 characters long.');
+    }
+
+    final matches = await db.query(
+      'users',
+      where: 'id = ? AND passkey = ?',
+      whereArgs: [userId, trimmedCurrent],
+      limit: 1,
+    );
+
+    if (matches.isEmpty) {
+      throw Exception('Current password is incorrect.');
+    }
+
+    await db.update(
+      'users',
+      {'passkey': trimmedNew},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future<bool> userExists() async {
@@ -83,6 +140,9 @@ class AuthRepository {
       'id': 'default-admin',
       'email': defaultAdminEmail,
       'passkey': defaultAdminPasskey,
+      'name': 'Ramesh Admin',
+      'phone': '+91 9876543210',
+      'role': 'Operations Admin',
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
