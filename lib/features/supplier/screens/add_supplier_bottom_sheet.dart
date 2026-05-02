@@ -22,6 +22,8 @@ class _AddSupplierBottomSheetState extends State<AddSupplierBottomSheet> {
   String _city = '';
   String _specialties = '';
   String _status = 'active';
+  String _phone = '';
+  String _email = '';
 
   @override
   void initState() {
@@ -31,6 +33,8 @@ class _AddSupplierBottomSheetState extends State<AddSupplierBottomSheet> {
       _contactPerson = widget.supplierToEdit!.contactPerson;
       _city = widget.supplierToEdit!.city;
       _specialties = widget.supplierToEdit!.specialties.join(', ');
+      _phone = widget.supplierToEdit!.phone;
+      _email = widget.supplierToEdit!.email;
 
       final status = widget.supplierToEdit!.status;
       const validStatuses = ['active', 'inactive'];
@@ -64,6 +68,8 @@ class _AddSupplierBottomSheetState extends State<AddSupplierBottomSheet> {
           .toList(),
       activePOs: widget.supplierToEdit?.activePOs ?? 0,
       status: _status,
+      phone: _phone.trim(),
+      email: _email.trim(),
     );
 
     if (widget.supplierToEdit != null) {
@@ -132,6 +138,20 @@ class _AddSupplierBottomSheetState extends State<AddSupplierBottomSheet> {
               onChanged: (val) => _city = val,
               hintText: "City",
               prefixIcon: const Icon(Icons.location_city),
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              initialValue: _phone,
+              onChanged: (val) => _phone = val,
+              hintText: "Phone Number",
+              prefixIcon: const Icon(Icons.phone_outlined),
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              initialValue: _email,
+              onChanged: (val) => _email = val,
+              hintText: "Email Address",
+              prefixIcon: const Icon(Icons.email_outlined),
             ),
             const SizedBox(height: 16),
             CustomTextField(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../widgets/semi_bold_text_view.dart';
-
+import '../../dashboard/screens/dashboard_screen.dart';
+import '../../dispatch/screens/dispatch_hub_screen.dart';
+import '../../inventory/screens/inventory_screen.dart';
 import '../bloc/notifications_bloc.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -113,7 +115,7 @@ class NotificationsScreen extends StatelessWidget {
                         const SizedBox(height: 32),
                         Center(
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () => _showArchiveSheet(context),
                             child: const Text(
                               'View Notification Archive',
                               style: TextStyle(color: Color(0xFF94A3B8)),
@@ -273,7 +275,7 @@ class NotificationsScreen extends StatelessWidget {
                 Row(
                   children: [
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _handleNotificationAction(context, data),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: data['icon'] == 'package'
                             ? Colors.red.shade500
@@ -285,7 +287,10 @@ class NotificationsScreen extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        data['icon'] == 'package' ? 'Order Now' : 'Assign Tech',
+                        data['actionLabel'] as String? ??
+                            (data['icon'] == 'package'
+                                ? 'Open Inventory'
+                                : 'Open Dispatch'),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -346,67 +351,139 @@ class NotificationsScreen extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
       ),
-      child: Opacity(
-        opacity: isRead ? 0.7 : 1.0,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(iconData, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: SemiBoldTextView(
-                          text: data['title'],
-                          fontSize: 15,
-                        ),
-                      ),
-                      Text(
-                        data['time'],
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 11,
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data['content'],
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (!isRead)
+      child: InkWell(
+        onTap: () => _handleNotificationAction(context, data),
+        child: Opacity(
+          opacity: isRead ? 0.7 : 1.0,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Container(
-                margin: const EdgeInsets.only(left: 8, top: 4),
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF007FFF),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconBgColor,
                   shape: BoxShape.circle,
                 ),
+                child: Icon(iconData, color: iconColor, size: 20),
               ),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: SemiBoldTextView(
+                            text: data['title'],
+                            fontSize: 15,
+                          ),
+                        ),
+                        Text(
+                          data['time'],
+                          style: const TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data['content'],
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isRead)
+                Container(
+                  margin: const EdgeInsets.only(left: 8, top: 4),
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF007FFF),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _handleNotificationAction(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
+    context.read<NotificationsBloc>().add(MarkNotificationRead(data['id']));
+
+    final route = data['actionRoute'] as String? ?? 'dashboard';
+    Widget destination;
+
+    switch (route) {
+      case 'inventory':
+        destination = const InventoryScreen();
+        break;
+      case 'dispatch':
+        destination = const DispatchHubScreen();
+        break;
+      default:
+        destination = const DashboardScreen();
+        break;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+    );
+  }
+
+  void _showArchiveSheet(BuildContext context) {
+    final state = context.read<NotificationsBloc>().state;
+    if (state is! NotificationsLoaded) return;
+
+    final archived = state.allNotifications
+        .where((notification) => notification['isRead'] == true)
+        .toList();
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SemiBoldTextView(text: 'Notification Archive', fontSize: 18),
+                const SizedBox(height: 16),
+                if (archived.isEmpty)
+                  const Text('No archived notifications yet.')
+                else
+                  ...archived.map(
+                    (notification) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(notification['title'] as String),
+                      subtitle: Text(notification['content'] as String),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -171,6 +171,24 @@ Widget _buildAddActions(BuildContext context) {
       ),
       const SizedBox(width: 8),
       GestureDetector(
+        onTap: () => _showAddCategoryDialog(context),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: const Icon(
+            Icons.category_outlined,
+            color: Color(0xFF475569),
+            size: 20,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      GestureDetector(
         onTap: () {
           showModalBottomSheet(
             context: context,
@@ -223,8 +241,9 @@ Widget _buildCategoryFilters(BuildContext context, {bool isVertical = false}) {
       if (state is InventoryLoaded) {
         currentCategory = state.selectedCategory;
       }
-
-      final categories = ['All', 'Pumps', 'Membranes', 'Filters', 'UV Lamps'];
+      final categories = state is InventoryLoaded
+          ? state.categories
+          : const ['All'];
 
       if (isVertical) {
         return ListView.separated(
@@ -270,6 +289,49 @@ Widget _buildCategoryFilters(BuildContext context, {bool isVertical = false}) {
         ),
       );
     },
+  );
+}
+
+void _showAddCategoryDialog(BuildContext context) {
+  final controller = TextEditingController();
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Create Product Category'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'e.g. Pump, Filter, Valve',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final categoryName = controller.text.trim();
+            if (categoryName.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Category name is required')),
+              );
+              return;
+            }
+
+            context.read<InventoryBloc>().add(AddInventoryCategory(categoryName));
+            Navigator.pop(dialogContext);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Category "$categoryName" created')),
+            );
+          },
+          child: const Text('Create'),
+        ),
+      ],
+    ),
   );
 }
 

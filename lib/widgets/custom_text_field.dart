@@ -6,8 +6,10 @@ class CustomTextField extends StatelessWidget {
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final String? initialValue;
+  final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
   final bool readOnly;
+  final VoidCallback? onTap;
 
   const CustomTextField({
     super.key,
@@ -16,17 +18,21 @@ class CustomTextField extends StatelessWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.initialValue,
+    this.controller,
     this.onChanged,
     this.readOnly = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      initialValue: initialValue,
+      controller: controller,
+      initialValue: controller == null ? initialValue : null,
       obscureText: obscureText,
       onChanged: onChanged,
       readOnly: readOnly,
+      onTap: onTap,
       style: TextStyle(
         fontSize: 16,
         color: readOnly ? const Color(0xFF64748B) : const Color(0xFF0F172A),

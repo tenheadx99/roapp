@@ -31,6 +31,15 @@ class FilterInventoryByCategory extends InventoryEvent {
   List<Object?> get props => [category];
 }
 
+class AddInventoryCategory extends InventoryEvent {
+  final String categoryName;
+
+  const AddInventoryCategory(this.categoryName);
+
+  @override
+  List<Object?> get props => [categoryName];
+}
+
 class AddInventoryItem extends InventoryEvent {
   final InventoryItem item;
   const AddInventoryItem(this.item);
@@ -67,12 +76,14 @@ class InventoryLoading extends InventoryState {}
 class InventoryLoaded extends InventoryState {
   final List<InventoryItem> allItems;
   final List<InventoryItem> filteredItems;
+  final List<String> categories;
   final String searchQuery;
   final String selectedCategory;
 
   const InventoryLoaded({
     required this.allItems,
     required this.filteredItems,
+    required this.categories,
     this.searchQuery = '',
     this.selectedCategory = 'All',
   });
@@ -81,6 +92,7 @@ class InventoryLoaded extends InventoryState {
   List<Object?> get props => [
     allItems,
     filteredItems,
+    categories,
     searchQuery,
     selectedCategory,
   ];
@@ -88,12 +100,14 @@ class InventoryLoaded extends InventoryState {
   InventoryLoaded copyWith({
     List<InventoryItem>? allItems,
     List<InventoryItem>? filteredItems,
+    List<String>? categories,
     String? searchQuery,
     String? selectedCategory,
   }) {
     return InventoryLoaded(
       allItems: allItems ?? this.allItems,
       filteredItems: filteredItems ?? this.filteredItems,
+      categories: categories ?? this.categories,
       searchQuery: searchQuery ?? this.searchQuery,
       selectedCategory: selectedCategory ?? this.selectedCategory,
     );
@@ -119,6 +133,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     on<LoadInventoryRequested>(_onLoadInventory);
     on<SearchInventory>(_onSearchInventory);
     on<FilterInventoryByCategory>(_onFilterByCategory);
+    on<AddInventoryCategory>(_onAddInventoryCategory);
     on<AddInventoryItem>(_onAddInventoryItem);
     on<UpdateInventoryItem>(_onUpdateInventoryItem);
     on<DeleteInventoryItem>(_onDeleteInventoryItem);
@@ -131,7 +146,14 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     emit(InventoryLoading());
     try {
       final items = await repository.getInventory();
-      emit(InventoryLoaded(allItems: items, filteredItems: items));
+      final categories = await repository.getCategories();
+      emit(
+        InventoryLoaded(
+          allItems: items,
+          filteredItems: items,
+          categories: categories,
+        ),
+      );
     } catch (e) {
       emit(InventoryError(e.toString()));
     }
@@ -169,7 +191,10 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       emit(
         currentState.copyWith(
           filteredItems: filtered,
-          selectedCategory: category,
+          selectedCategory: category == 'All' ||
+                  currentState.categories.contains(category)
+              ? category
+              : 'All',
         ),
       );
     }
@@ -186,6 +211,40 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
           item.name.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
+  }
+
+  void _onAddInventoryCategory(
+    AddInventoryCategory event,
+    Emitter<InventoryState> emit,
+  ) async {
+    try {
+      await repository.addCategory(event.categoryName);
+      final items = await repository.getInventory();
+      final categories = await repository.getCategories();
+
+      final currentState = state is InventoryLoaded
+          ? state as InventoryLoaded
+          : null;
+      final selectedCategory = event.categoryName.trim().isEmpty
+          ? (currentState?.selectedCategory ?? 'All')
+          : event.categoryName.trim();
+      final query = currentState?.searchQuery ?? '';
+      final effectiveCategory = categories.contains(selectedCategory)
+          ? selectedCategory
+          : 'All';
+
+      emit(
+        InventoryLoaded(
+          allItems: items,
+          filteredItems: _filterItems(items, query, effectiveCategory),
+          categories: categories,
+          searchQuery: query,
+          selectedCategory: effectiveCategory,
+        ),
+      );
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+    }
   }
 
   void _onAddInventoryItem(

@@ -470,32 +470,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           );
         }
 
-        final fetchedHistory = snapshot.data ?? [];
-        final history = fetchedHistory.isNotEmpty
-            ? fetchedHistory
-            : [
-                ServiceHistory(
-                  id: 'dummy_1',
-                  customerId: widget.customer.id,
-                  date: 'Oct 15, 2023',
-                  type: 'Routine Maintenance',
-                  technicianName: 'Rajeesh Kumar',
-                  notes:
-                      'Replaced sediment filter and carbon filter. TDS at 50.',
-                  cost: 450.0,
-                  partsReplaced: 'Sediment Filter, Carbon Filter',
-                ),
-                ServiceHistory(
-                  id: 'dummy_2',
-                  customerId: widget.customer.id,
-                  date: 'May 02, 2023',
-                  type: 'Motor Repair',
-                  technicianName: 'Suresh Menon',
-                  notes: 'Motor was making noise, replaced under warranty.',
-                  cost: 1200.0,
-                  partsReplaced: 'RO Pump Motor 100GPD',
-                ),
-              ];
+        final history = snapshot.data ?? [];
 
         return Padding(
           padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),

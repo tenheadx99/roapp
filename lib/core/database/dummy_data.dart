@@ -5,6 +5,14 @@ import 'package:uuid/uuid.dart';
 class DummyData {
   static final _uuid = const Uuid();
   static final _random = Random();
+  static const inventoryCategories = [
+    'Membranes',
+    'Filters',
+    'Pumps',
+    'Tubes & Fittings',
+    'Adapters',
+    'Miscellaneous',
+  ];
 
   static const _firstNames = [
     'Rahul', 'Amit', 'Priya', 'Neha', 'Sandeep', 'Anjali', 'Vikram', 'Rohan',
@@ -36,19 +44,36 @@ class DummyData {
     'Delhi Water Tech', 'Global RO Spares', 'Bharat Aquatics', 'Oceanic Filters'
   ];
 
-  static const _inventoryCategories = [
-    'Membranes', 'Filters', 'Pumps', 'Tubes & Fittings', 'Adapters', 'Miscellaneous'
-  ];
-
   static Future<void> seed(Database db) async {
     final countSqflite = await db.rawQuery('SELECT COUNT(*) FROM customers');
     final count = Sqflite.firstIntValue(countSqflite);
     if (count != null && count > 0) return; // Already seeded
 
     await _seedSuppliers(db);
+    await _seedProductCategories(db);
     await _seedInventory(db);
     await _seedTechnicians(db);
     await _seedCustomers(db);
+  }
+
+  static Future<void> _seedProductCategories(Database db) async {
+    const productCategories = [
+      'Filters',
+      'Membranes',
+      'Pumps',
+      'UV Lamps',
+      'Other',
+      'Tubes & Fittings',
+      'Adapters',
+      'Miscellaneous',
+    ];
+
+    for (final category in productCategories) {
+      await db.insert('product_categories', {
+        'id': 'cat-${category.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}',
+        'name': category,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
   }
 
   static Future<void> _seedSuppliers(Database db) async {
@@ -61,6 +86,8 @@ class DummyData {
         'specialties': 'Membranes, Pumps, Filters',
         'activePOs': _random.nextInt(5),
         'status': _random.nextDouble() > 0.1 ? 'active' : 'inactive',
+        'phone': '+91 98${(_random.nextInt(90000000) + 10000000).toString()}',
+        'email': 'sales${i + 1}@${_supplierNames[i % _supplierNames.length].toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '')}.com',
       });
     }
   }
@@ -69,7 +96,7 @@ class DummyData {
     // Generate at least 100 items
     int itemCount = 0;
     while (itemCount < 105) {
-      final category = _randomElement(_inventoryCategories);
+      final category = _randomElement(inventoryCategories);
       String name = '';
       double mrp = 0;
       double price = 0;
@@ -179,14 +206,20 @@ class DummyData {
       
       // Some pending service requests
       if (status == 'Service Due' || status == 'Pending Install') {
+         final scheduledFor = _randomDateInFuture(14);
          await db.insert('service_requests', {
           'id': 'req-${_uuid.v4()}',
           'customerName': cName,
           'address': _randomElement(_areas),
           'type': status == 'Pending Install' ? 'Installation' : 'Regular Service',
           'model': _randomElement(_roModels),
-          'time': '10:00 AM - 12:00 PM',
+          'time': _formatDateAndTime(scheduledFor),
           'status': 'new',
+          'scheduledFor': scheduledFor.toIso8601String(),
+          'technicianName': null,
+          'notes': status == 'Pending Install'
+              ? 'Customer requested installation confirmation in advance.'
+              : 'Carry standard service kit and TDS meter.',
         });
       }
     }

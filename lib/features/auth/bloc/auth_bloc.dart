@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/user.dart';
+import '../repositories/auth_repository.dart';
 
 // --- Events ---
 abstract class AuthEvent extends Equatable {
@@ -56,19 +57,42 @@ class AuthUnauthenticated extends AuthState {}
 
 // --- Bloc ---
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc() : super(AuthInitial()) {
+  final AuthRepository repository;
+
+  AuthBloc({AuthRepository? repository})
+    : repository = repository ?? AuthRepository(),
+      super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
   }
 
   void _onLoginRequested(LoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await repository.ensureDefaultUser();
 
-    // For demo purposes, any login creates a user
-    final user = User(id: '1', email: event.email);
-    emit(AuthAuthenticated(user));
+      final email = event.email.trim();
+      final password = event.password.trim();
+
+      if (email.isEmpty || password.isEmpty) {
+        emit(const AuthError('Email and password are required.'));
+        return;
+      }
+
+      final user = await repository.loginWithPasskey(email, password);
+      if (user == null) {
+        emit(
+          const AuthError(
+            'Invalid credentials. Use your saved passkey or reset the default admin account.',
+          ),
+        );
+        return;
+      }
+
+      emit(AuthAuthenticated(user));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
   }
 
   void _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'features/auth/bloc/auth_bloc.dart';
+import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/screens/login_screen.dart';
 
 void main() {
@@ -13,7 +14,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
-      providers: [BlocProvider<AuthBloc>(create: (_) => AuthBloc())],
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (_) => AuthBloc(repository: AuthRepository()),
+        ),
+      ],
       child: MaterialApp(
         title: 'RO Manager',
         debugShowCheckedModeBanner: false,

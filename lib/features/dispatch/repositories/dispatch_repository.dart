@@ -8,7 +8,10 @@ class DispatchRepository {
 
   Future<List<ServiceRequest>> getServiceRequests() async {
     final db = await dbHelper.database;
-    final maps = await db.query('service_requests', orderBy: 'time ASC');
+    final maps = await db.query(
+      'service_requests',
+      orderBy: 'scheduledFor ASC, time ASC',
+    );
     return maps.map((e) => ServiceRequest.fromMap(e)).toList();
   }
 
@@ -33,7 +36,7 @@ class DispatchRepository {
       'service_requests',
       where: 'customerName = ?',
       whereArgs: [name],
-      orderBy: 'time ASC',
+      orderBy: 'scheduledFor ASC, time ASC',
     );
     return maps.map((e) => ServiceRequest.fromMap(e)).toList();
   }

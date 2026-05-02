@@ -7,6 +7,7 @@ import '../../../widgets/header_text.dart';
 import '../../../widgets/label_text.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../bloc/auth_bloc.dart';
+import '../repositories/auth_repository.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,8 +18,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: "admin@roservice.com");
-  final _passwordController = TextEditingController(text: "password123");
+  final _emailController = TextEditingController(
+    text: AuthRepository.defaultAdminEmail,
+  );
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -30,6 +34,42 @@ class _LoginScreenState extends State<LoginScreen> {
   void _onLogin() {
     context.read<AuthBloc>().add(
       LoginRequested(_emailController.text, _passwordController.text),
+    );
+  }
+
+  Future<void> _restoreDefaultAccess() async {
+    await AuthRepository().resetDefaultAdminPasskey();
+    if (!mounted) return;
+
+    setState(() {
+      _emailController.text = AuthRepository.defaultAdminEmail;
+      _passwordController.text = AuthRepository.defaultAdminPasskey;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Default admin access restored. You can sign in with the seeded local account now.',
+        ),
+      ),
+    );
+  }
+
+  void _showSupportDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Access Support'),
+        content: const Text(
+          'This build uses a local on-device database. If you lose access, use "Forgot Password?" to restore the seeded admin account:\n\nadmin@roservice.com\npassword123',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -92,9 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Form Area
                     const LabelText(text: AppStrings.emailAddress),
                     CustomTextField(
+                      controller: _emailController,
                       hintText: AppStrings.emailPlaceholder,
-                      initialValue: _emailController.text,
-                      onChanged: (val) => _emailController.text = val,
                       prefixIcon: const Icon(
                         Icons.mail_outline,
                         color: Color(0xFF94A3B8),
@@ -104,17 +143,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const LabelText(text: AppStrings.password),
                     CustomTextField(
+                      controller: _passwordController,
                       hintText: AppStrings.passwordPlaceholder,
-                      obscureText: true,
-                      initialValue: _passwordController.text,
-                      onChanged: (val) => _passwordController.text = val,
+                      obscureText: _obscurePassword,
                       prefixIcon: const Icon(
                         Icons.lock_outline,
                         color: Color(0xFF94A3B8),
                       ),
-                      suffixIcon: const Icon(
-                        Icons.visibility_off_outlined,
-                        color: Color(0xFF94A3B8),
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: const Color(0xFF94A3B8),
+                        ),
                       ),
                     ),
 
@@ -122,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: _restoreDefaultAccess,
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -172,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _showSupportDialog,
                           child: const Text(
                             AppStrings.contactAdmin,
                             style: TextStyle(

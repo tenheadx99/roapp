@@ -85,7 +85,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           .where((item) => item.stock <= item.lowStockThreshold)
           .length;
       final pendingService = requests
-          .where((req) => req.status == 'Pending')
+          .where((req) => req.status != 'completed')
           .length;
 
       final stats = {
@@ -96,32 +96,47 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       };
 
       var activities = requests
+          .toList()
+          ..sort(
+            (a, b) => _sortScheduleValue(a).compareTo(_sortScheduleValue(b)),
+          );
+
+      final activityCards = activities
           .take(3)
           .map(
             (req) => {
               'id': req.id.hashCode,
               'title': '${req.type} Request',
-              'desc': req.customerName,
+              'desc': req.technicianName != null
+                  ? '${req.customerName} • ${req.technicianName}'
+                  : req.customerName,
               'time': req.time,
-              'color': req.status == 'Completed' ? 'green' : 'orange',
+              'color': req.status == 'completed'
+                  ? 'green'
+                  : (req.status == 'assigned' ? 'blue' : 'orange'),
             },
           )
           .toList();
 
-      if (activities.isEmpty) {
-        activities = [
-          {
-            'id': 1,
-            'title': 'System Started',
-            'desc': 'No recent activity yet.',
-            'time': 'Just now',
-            'color': 'blue',
-          },
-        ];
+      if (activityCards.isEmpty) {
+        emit(
+          DashboardLoaded(
+            stats,
+            const [
+              {
+                'id': 1,
+                'title': 'System Started',
+                'desc': 'No recent activity yet.',
+                'time': 'Just now',
+                'color': 'blue',
+              },
+            ],
+            const [],
+          ),
+        );
+        return;
       }
 
-      // Sort requests by time assuming time string is comparable like 'HH:MM' or 'YYYY-MM-DD'
-      // Taking top 5
       final scheduledServices = List<Map<String, dynamic>>.from(
         requests.map((req) => {
           'id': req.id,
@@ -131,16 +146,30 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           'status': req.status,
           'type': req.type,
           'model': req.model,
-        })
+          'technicianName': req.technicianName,
+          'notes': req.notes,
+          'scheduledFor': req.scheduledFor,
+        }),
       );
-      
-      // Basic string sort by time (you might need proper DateTime parsing if formats vary)
-      scheduledServices.sort((a, b) => (a['time'] as String).compareTo(b['time'] as String));
 
-      emit(DashboardLoaded(stats, activities, scheduledServices));
+      scheduledServices.sort(
+        (a, b) => _sortScheduleMap(a).compareTo(_sortScheduleMap(b)),
+      );
+
+      emit(DashboardLoaded(stats, activityCards, scheduledServices));
     } catch (e) {
       emit(DashboardError(e.toString()));
     }
+  }
+
+  int _sortScheduleValue(dynamic request) {
+    final parsed = DateTime.tryParse(request.scheduledFor ?? '');
+    return parsed?.millisecondsSinceEpoch ?? 0;
+  }
+
+  int _sortScheduleMap(Map<String, dynamic> service) {
+    final parsed = DateTime.tryParse(service['scheduledFor'] as String? ?? '');
+    return parsed?.millisecondsSinceEpoch ?? 0;
   }
 
   void _onDataClearRequested(

@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../customer/repositories/customer_repository.dart';
+import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
 import '../../technician/repositories/technician_repository.dart';
 
@@ -103,9 +105,13 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
     try {
       final techRepo = TechnicianRepository();
       final invRepo = InventoryRepository();
+      final customerRepo = CustomerRepository();
+      final dispatchRepo = DispatchRepository();
 
       final technicians = await techRepo.getTechnicians();
       final inventory = await invRepo.getInventory();
+      final serviceHistory = await customerRepo.getAllServiceHistory();
+      final requests = await dispatchRepo.getServiceRequests();
 
       var serviceLoad = technicians.map((t) {
         return {'name': t.name, 'tasks': t.tasksToday, 'color': '#007fff'};
@@ -139,20 +145,41 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         ];
       }
 
+      final revenue = serviceHistory.fold<double>(
+        0,
+        (sum, entry) => sum + entry.cost,
+      );
+      final openRequests = requests
+          .where((request) => request.status != 'completed')
+          .length;
+      final avgTat = technicians.isEmpty
+          ? 0.0
+          : ((openRequests / technicians.length) * 1.8 + 1.2);
+
+      final salesTrends = <String, double>{
+        'Mon': 0,
+        'Tue': 0,
+        'Wed': 0,
+        'Thu': 0,
+        'Fri': 0,
+        'Sat': 0,
+        'Sun': 0,
+      };
+
+      for (final entry in serviceHistory) {
+        final date = _parseHistoryDate(entry.date);
+        if (date == null) continue;
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        final label = labels[date.weekday - 1];
+        salesTrends[label] = (salesTrends[label] ?? 0) + entry.cost;
+      }
+
       emit(
         InsightsLoaded(
           activeTimeRange: 'Today',
-          revenue: 14290,
-          avgTat: 3.8,
-          salesTrends: const {
-            'Mon': 40,
-            'Tue': 60,
-            'Wed': 55,
-            'Thu': 85,
-            'Fri': 100,
-            'Sat': 45,
-            'Sun': 30,
-          },
+          revenue: revenue,
+          avgTat: double.parse(avgTat.toStringAsFixed(1)),
+          salesTrends: salesTrends,
           serviceLoad: serviceLoad,
           inventoryUsage: inventoryUsage,
         ),
@@ -170,5 +197,39 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
       // Here we just update the active range text.
       emit(currentState.copyWith(activeTimeRange: event.range));
     }
+  }
+
+  DateTime? _parseHistoryDate(String value) {
+    final parts = value.split('•').first.trim();
+    final commaParts = parts.split(',');
+    if (commaParts.length < 2) return null;
+
+    final left = commaParts.first.trim().split(' ');
+    final year = int.tryParse(commaParts.last.trim());
+    if (left.length < 2 || year == null) return null;
+
+    final month = _monthNumber(left.first);
+    final day = int.tryParse(left[1]);
+    if (month == null || day == null) return null;
+
+    return DateTime(year, month, day);
+  }
+
+  int? _monthNumber(String value) {
+    const months = {
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
+    };
+    return months[value];
   }
 }

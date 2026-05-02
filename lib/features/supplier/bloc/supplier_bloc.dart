@@ -188,10 +188,15 @@ class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
     return allSuppliers.where((s) {
       final matchesSearch =
           s.name.toLowerCase().contains(query) ||
-          s.city.toLowerCase().contains(query);
+          s.city.toLowerCase().contains(query) ||
+          s.contactPerson.toLowerCase().contains(query) ||
+          s.phone.toLowerCase().contains(query) ||
+          s.email.toLowerCase().contains(query) ||
+          s.specialties.any((specialty) => specialty.toLowerCase().contains(query));
 
       final matchesCategory =
-          category == 'All Suppliers' || s.specialties.contains(category);
+          category == 'All Suppliers' ||
+          s.specialties.any((specialty) => specialty.trim() == category);
 
       return matchesSearch && matchesCategory;
     }).toList();

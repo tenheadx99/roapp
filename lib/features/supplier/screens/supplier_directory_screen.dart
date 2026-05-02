@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/regular_text_view.dart';
@@ -467,6 +468,16 @@ class _SupplierCard extends StatelessWidget {
                       SubRegularText(
                         text: '${supplier.contactPerson} • ${supplier.city}',
                       ),
+                      if (supplier.phone.isNotEmpty || supplier.email.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: SubRegularText(
+                            text: [
+                              if (supplier.phone.isNotEmpty) supplier.phone,
+                              if (supplier.email.isNotEmpty) supplier.email,
+                            ].join(' • '),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -529,11 +540,7 @@ class _SupplierCard extends StatelessWidget {
                   ],
                 ),
                 InkWell(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text(AppStrings.comingSoon)),
-                    );
-                  },
+                  onTap: () => _showProcurementDialog(context),
                   child: Row(
                     children: [
                       Text(
@@ -586,11 +593,12 @@ class _SupplierCard extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(AppStrings.comingSoon)),
-            );
-          },
+          onTap: () => _launchContact(
+            context,
+            supplier.phone,
+            Uri(scheme: 'tel', path: supplier.phone),
+            'Phone number missing for this supplier.',
+          ),
           child: _ActionButton(
             icon: Icons.phone_outlined,
             backgroundColor: const Color(0xFF007FFF).withOpacity(0.1),
@@ -599,11 +607,16 @@ class _SupplierCard extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(AppStrings.comingSoon)),
-            );
-          },
+          onTap: () => _launchContact(
+            context,
+            supplier.email,
+            Uri(
+              scheme: 'mailto',
+              path: supplier.email,
+              queryParameters: {'subject': 'RO Parts Requirement'},
+            ),
+            'Email address missing for this supplier.',
+          ),
           child: _ActionButton(
             icon: Icons.chat_bubble_outline,
             backgroundColor: Colors.green.shade50,
@@ -611,6 +624,67 @@ class _SupplierCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _launchContact(
+    BuildContext context,
+    String value,
+    Uri uri,
+    String fallbackMessage,
+  ) async {
+    if (value.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(fallbackMessage)));
+      return;
+    }
+
+    final launched = await launchUrl(uri);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open the selected contact action.')),
+      );
+    }
+  }
+
+  void _showProcurementDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          supplier.activePOs > 0 ? 'Purchase Orders' : 'Create Purchase Order',
+        ),
+        content: Text(
+          supplier.activePOs > 0
+              ? '${supplier.name} currently has ${supplier.activePOs} active purchase orders. Create another one for urgent replenishment if needed.'
+              : 'Create a new purchase order for ${supplier.name} and track it from the supplier directory.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              context.read<SupplierBloc>().add(
+                UpdateSupplier(
+                  supplier.copyWith(activePOs: supplier.activePOs + 1),
+                ),
+              );
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Purchase order created for ${supplier.name}. Active POs: ${supplier.activePOs + 1}',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Create PO'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/utils/db_exporter.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../widgets/responsive_layout.dart';
-
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
+import '../../auth/repositories/auth_repository.dart';
 import '../../customer/screens/customer_list_screen.dart';
 import '../../dispatch/screens/dispatch_hub_screen.dart';
 import '../../insights/screens/insights_screen.dart';
@@ -94,7 +94,8 @@ class DashboardScreen extends StatelessWidget {
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                             onPressed: () async {
                               // Verify password (matching the default credentials)
-                              if (passwordController.text == "password123") {
+                              if (passwordController.text ==
+                                  AuthRepository.defaultAdminPasskey) {
                                 if (shouldBackup) {
                                   await DbExporter.exportDatabase();
                                 }
@@ -145,7 +146,7 @@ class DashboardScreen extends StatelessWidget {
           desktop: _DesktopDashboardView(),
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () {},
+          onPressed: () => _showQuickCreateSheet(context),
           backgroundColor: const Color(0xFF007FFF),
           child: const Icon(Icons.add, size: 30),
         ),
@@ -178,6 +179,7 @@ class _MobileDashboardView extends StatelessWidget {
                 _buildScheduledServices(context, state.scheduledServices),
                 const SizedBox(height: 16),
                 _buildRecentActivity(
+                  context,
                   state.activities.cast<Map<String, dynamic>>(),
                 ),
               ],
@@ -234,6 +236,7 @@ class _DesktopDashboardView extends StatelessWidget {
                               border: Border.all(color: const Color(0xFFE2E8F0)),
                             ),
                             child: _buildRecentActivity(
+                              context,
                               state.activities.cast<Map<String, dynamic>>(),
                             ),
                           ),
@@ -426,7 +429,9 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
           separatorBuilder: (context, index) => const Divider(indent: 52),
           itemBuilder: (context, index) {
             final service = top5Scheduled[index] as Map<String, dynamic>;
-            final isPending = service['status'] == 'Pending';
+            final status = service['status'] as String? ?? 'new';
+            final statusLabel = status.replaceAll('_', ' ').toUpperCase();
+            final isPending = status != 'completed';
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -474,7 +479,7 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  service['status'],
+                                  statusLabel,
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: isPending ? Colors.orange.shade700 : Colors.green.shade700,
@@ -496,7 +501,10 @@ Widget _buildScheduledServices(BuildContext context, List<dynamic> scheduledServ
   );
 }
 
-Widget _buildRecentActivity(List<Map<String, dynamic>> activities) {
+Widget _buildRecentActivity(
+  BuildContext context,
+  List<Map<String, dynamic>> activities,
+) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -505,7 +513,12 @@ Widget _buildRecentActivity(List<Map<String, dynamic>> activities) {
         children: [
           const SemiBoldTextView(text: AppStrings.recentActivity, fontSize: 16),
           TextButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+              );
+            },
             child: const Text(
               AppStrings.viewAll,
               style: TextStyle(
@@ -590,6 +603,77 @@ Widget _buildRecentActivity(List<Map<String, dynamic>> activities) {
         },
       ),
     ],
+  );
+}
+
+void _showQuickCreateSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SemiBoldTextView(text: 'Quick Create', fontSize: 18),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.person_add_alt_1_outlined),
+                title: const Text('New Customer'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CustomerListScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.build_circle_outlined),
+                title: const Text('Service Request'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DispatchHubScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.inventory_2_outlined),
+                title: const Text('Inventory Item'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.precision_manufacturing_outlined),
+                title: const Text('Supplier'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SupplierDirectoryScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
 

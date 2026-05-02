@@ -7,7 +7,10 @@ class ServiceRequest extends Equatable {
   final String type;
   final String model;
   final String time;
-  final String status; // 'new' | 'assigned' | 'in-progress'
+  final String status; // 'new' | 'assigned' | 'in_progress' | 'completed'
+  final String? scheduledFor;
+  final String? technicianName;
+  final String? notes;
 
   const ServiceRequest({
     required this.id,
@@ -17,6 +20,9 @@ class ServiceRequest extends Equatable {
     required this.model,
     required this.time,
     required this.status,
+    this.scheduledFor,
+    this.technicianName,
+    this.notes,
   });
 
   factory ServiceRequest.fromMap(Map<String, dynamic> map) {
@@ -28,6 +34,9 @@ class ServiceRequest extends Equatable {
       model: map['model'] as String,
       time: map['time'] as String,
       status: map['status'] as String,
+      scheduledFor: map['scheduledFor'] as String?,
+      technicianName: map['technicianName'] as String?,
+      notes: map['notes'] as String?,
     );
   }
 
@@ -40,6 +49,9 @@ class ServiceRequest extends Equatable {
       'model': model,
       'time': time,
       'status': status,
+      'scheduledFor': scheduledFor,
+      'technicianName': technicianName,
+      'notes': notes,
     };
   }
 
@@ -52,6 +64,9 @@ class ServiceRequest extends Equatable {
     model,
     time,
     status,
+    scheduledFor,
+    technicianName,
+    notes,
   ];
 
   ServiceRequest copyWith({
@@ -62,6 +77,9 @@ class ServiceRequest extends Equatable {
     String? model,
     String? time,
     String? status,
+    String? scheduledFor,
+    String? technicianName,
+    String? notes,
   }) {
     return ServiceRequest(
       id: id ?? this.id,
@@ -71,6 +89,24 @@ class ServiceRequest extends Equatable {
       model: model ?? this.model,
       time: time ?? this.time,
       status: status ?? this.status,
+      scheduledFor: scheduledFor ?? this.scheduledFor,
+      technicianName: technicianName ?? this.technicianName,
+      notes: notes ?? this.notes,
     );
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'new':
+        return 'NEW';
+      case 'assigned':
+        return 'ASSIGNED';
+      case 'in_progress':
+        return 'IN PROGRESS';
+      case 'completed':
+        return 'COMPLETED';
+      default:
+        return status.toUpperCase();
+    }
   }
 }

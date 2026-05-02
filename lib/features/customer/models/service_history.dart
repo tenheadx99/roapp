@@ -29,7 +29,7 @@ class ServiceHistory extends Equatable {
       type: map['type'] as String,
       technicianName: map['technicianName'] as String,
       notes: map['notes'] as String,
-      cost: map['cost'] as double,
+      cost: (map['cost'] as num).toDouble(),
       partsReplaced: map['partsReplaced'] as String,
     );
   }

@@ -33,8 +33,9 @@ class _AddServiceRequestBottomSheetState
   String _address = '';
   String _type = 'RO Filter Change';
   String _model = '';
-  String _time = '';
   String _status = 'new';
+  String _notes = '';
+  DateTime? _scheduledFor;
 
   final List<String> _types = [
     'RO Filter Change',
@@ -58,26 +59,79 @@ class _AddServiceRequestBottomSheetState
       _customerName = widget.requestToEdit!.customerName;
       _address = widget.requestToEdit!.address;
       _model = widget.requestToEdit!.model;
-      _time = widget.requestToEdit!.time;
+      _notes = widget.requestToEdit!.notes ?? '';
 
       final type = widget.requestToEdit!.type;
       if (_types.contains(type)) {
         _type = type;
-      } else {
-        _type = _types.first;
       }
 
       final status = widget.requestToEdit!.status;
       if (_statuses.contains(status)) {
         _status = status;
-      } else {
-        _status = _statuses.first;
+      }
+
+      final scheduledFor = widget.requestToEdit!.scheduledFor;
+      if ((scheduledFor ?? '').isNotEmpty) {
+        _scheduledFor = DateTime.tryParse(scheduledFor!);
       }
     } else {
       _customerName = widget.initialCustomerName ?? '';
       _address = widget.initialAddress ?? '';
       _model = widget.initialModel ?? '';
     }
+  }
+
+  Future<void> _pickSchedule() async {
+    final now = DateTime.now();
+    final initialDate = _scheduledFor ?? now;
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+
+    if (selectedDate == null || !mounted) return;
+
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_scheduledFor ?? now),
+    );
+
+    if (selectedTime == null) return;
+
+    setState(() {
+      _scheduledFor = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+    });
+  }
+
+  String _formatScheduleLabel(DateTime date) {
+    final hour24 = date.hour;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year} • $hour12:$minute $period';
   }
 
   void _submitForm() {
@@ -94,8 +148,13 @@ class _AddServiceRequestBottomSheetState
       address: _address.trim(),
       type: _type,
       model: _model.trim().isNotEmpty ? _model.trim() : 'Unknown Data',
-      time: _time.trim().isNotEmpty ? _time.trim() : 'ASAP',
+      time: _scheduledFor != null
+          ? _formatScheduleLabel(_scheduledFor!)
+          : (widget.requestToEdit?.time ?? 'ASAP'),
       status: _status,
+      scheduledFor: _scheduledFor?.toIso8601String(),
+      technicianName: widget.requestToEdit?.technicianName,
+      notes: _notes.trim().isEmpty ? null : _notes.trim(),
     );
 
     if (widget.requestToEdit != null) {
@@ -166,35 +225,33 @@ class _AddServiceRequestBottomSheetState
               prefixIcon: const Icon(Icons.water_drop_outlined),
             ),
             const SizedBox(height: 16),
+            CustomTextField(
+              initialValue: _scheduledFor != null
+                  ? _formatScheduleLabel(_scheduledFor!)
+                  : widget.requestToEdit?.time,
+              onTap: _pickSchedule,
+              hintText: AppStrings.selectDateTime,
+              readOnly: true,
+              prefixIcon: const Icon(Icons.calendar_month_outlined),
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              initialValue: _notes,
+              onChanged: (val) => _notes = val,
+              hintText: AppStrings.serviceNotesHint,
+              prefixIcon: const Icon(Icons.sticky_note_2_outlined),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   flex: 2,
                   child: DropdownButtonFormField<String>(
                     value: _type,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF007FFF)),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    items: _types.map((t) {
-                      return DropdownMenuItem(value: t, child: Text(t));
-                    }).toList(),
+                    decoration: _dropdownDecoration(),
+                    items: _types
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
                     onChanged: (val) {
                       if (val != null) setState(() => _type = val);
                     },
@@ -205,31 +262,12 @@ class _AddServiceRequestBottomSheetState
                   flex: 1,
                   child: DropdownButtonFormField<String>(
                     value: _status,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF007FFF)),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
+                    decoration: _dropdownDecoration(),
                     items: _statuses.map((s) {
                       return DropdownMenuItem(
                         value: s,
                         child: Text(
-                          s.toUpperCase(),
+                          s.replaceAll('_', ' ').toUpperCase(),
                           style: const TextStyle(fontSize: 12),
                         ),
                       );
@@ -241,65 +279,31 @@ class _AddServiceRequestBottomSheetState
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            InkWell(
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (date != null && mounted) {
-                  final time = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (time != null && mounted) {
-                    setState(() {
-                      _time =
-                          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${time.format(context)}";
-                    });
-                  }
-                }
-              },
-              child: IgnorePointer(
-                child: TextFormField(
-                  controller: TextEditingController(text: _time),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF0F172A),
-                  ),
-                  decoration: InputDecoration(
-                    hintText: AppStrings.selectDateTime,
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                    prefixIcon: const Icon(Icons.calendar_month),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Color(0xFF007FFF),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
             const SizedBox(height: 32),
             CustomButton(text: AppStrings.saveRequest, onPressed: _submitForm),
           ],
         ),
       ),
+    );
+  }
+
+  InputDecoration _dropdownDecoration() {
+    return InputDecoration(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade200),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF007FFF)),
+      ),
+      filled: true,
+      fillColor: Colors.white,
     );
   }
 }

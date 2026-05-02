@@ -58,4 +58,10 @@ class CustomerRepository {
     final db = await dbHelper.database;
     await db.insert('service_history', history.toMap());
   }
+
+  Future<List<ServiceHistory>> getAllServiceHistory() async {
+    final db = await dbHelper.database;
+    final maps = await db.query('service_history');
+    return maps.map((e) => ServiceHistory.fromMap(e)).toList();
+  }
 }

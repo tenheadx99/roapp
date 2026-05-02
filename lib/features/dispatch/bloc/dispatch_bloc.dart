@@ -14,7 +14,7 @@ abstract class DispatchEvent extends Equatable {
 class LoadDispatchRequests extends DispatchEvent {}
 
 class FilterDispatchRequests extends DispatchEvent {
-  final String statusTab; // 'New (4)', 'Assigned (12)', 'In Progress (8)'
+  final String statusTab;
 
   const FilterDispatchRequests(this.statusTab);
 
@@ -63,7 +63,7 @@ class DispatchLoaded extends DispatchState {
   const DispatchLoaded({
     required this.allRequests,
     required this.filteredRequests,
-    this.activeTab = 'New (4)',
+    this.activeTab = 'New',
   });
 
   @override
@@ -112,8 +112,13 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
     emit(DispatchLoading());
     try {
       final requests = await repository.getServiceRequests();
-      final filtered = _filterByTab(requests, 'New (4)');
-      emit(DispatchLoaded(allRequests: requests, filteredRequests: filtered));
+      emit(
+        DispatchLoaded(
+          allRequests: requests,
+          filteredRequests: _filterByTab(requests, 'New'),
+          activeTab: 'New',
+        ),
+      );
     } catch (e) {
       emit(DispatchError(e.toString()));
     }
@@ -137,14 +142,29 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
   }
 
   List<ServiceRequest> _filterByTab(List<ServiceRequest> requests, String tab) {
-    // Basic mapping based on React tabs
     if (tab.startsWith('New')) {
       return requests.where((r) => r.status == 'new').toList();
     } else if (tab.startsWith('Assigned')) {
       return requests.where((r) => r.status == 'assigned').toList();
-    } else {
+    } else if (tab.startsWith('In Progress')) {
       return requests.where((r) => r.status == 'in_progress').toList();
+    } else {
+      return requests.where((r) => r.status == 'completed').toList();
     }
+  }
+
+  Future<void> _reloadForActiveTab(Emitter<DispatchState> emit) async {
+    final activeTab = state is DispatchLoaded
+        ? (state as DispatchLoaded).activeTab
+        : 'New';
+    final requests = await repository.getServiceRequests();
+    emit(
+      DispatchLoaded(
+        allRequests: requests,
+        filteredRequests: _filterByTab(requests, activeTab),
+        activeTab: activeTab,
+      ),
+    );
   }
 
   void _onAddServiceRequest(
@@ -153,7 +173,7 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
   ) async {
     try {
       await repository.addServiceRequest(event.request);
-      add(LoadDispatchRequests());
+      await _reloadForActiveTab(emit);
     } catch (e) {
       emit(DispatchError(e.toString()));
     }
@@ -165,7 +185,7 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
   ) async {
     try {
       await repository.updateServiceRequest(event.request);
-      add(LoadDispatchRequests());
+      await _reloadForActiveTab(emit);
     } catch (e) {
       emit(DispatchError(e.toString()));
     }
@@ -177,7 +197,7 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
   ) async {
     try {
       await repository.deleteServiceRequest(event.requestId);
-      add(LoadDispatchRequests());
+      await _reloadForActiveTab(emit);
     } catch (e) {
       emit(DispatchError(e.toString()));
     }

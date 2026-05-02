@@ -216,6 +216,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
           int newCount = 0;
           int assignedCount = 0;
           int inProgressCount = 0;
+          int completedCount = 0;
 
           if (state is DispatchLoaded) {
             activeTab = state.activeTab;
@@ -226,12 +227,16 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
             inProgressCount = state.allRequests
                 .where((r) => r.status == 'in_progress')
                 .length;
+            completedCount = state.allRequests
+                .where((r) => r.status == 'completed')
+                .length;
           }
 
           final tabs = [
             {'label': 'New', 'count': newCount},
             {'label': 'Assigned', 'count': assignedCount},
             {'label': 'In Progress', 'count': inProgressCount},
+            {'label': 'Completed', 'count': completedCount},
           ];
 
           return SingleChildScrollView(
@@ -319,7 +324,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       ),
                     ),
                     child: Text(
-                      req.status.toUpperCase(),
+                      req.statusLabel,
                       style: const TextStyle(
                         color: Color(0xFF007FFF),
                         fontSize: 10,
@@ -366,6 +371,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
@@ -405,23 +411,108 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       ),
                     ],
                   ),
-                  if (req.status == 'new')
-                    SizedBox(
-                      width: 100,
-                      height: 36,
-                      child: CustomButton(
-                        text: AppStrings.assign,
-                        onPressed: () => _showAssignBottomSheet(context, req),
-                        height: 36,
-                        borderRadius: 8,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (req.status == 'new')
+                        SizedBox(
+                          width: 100,
+                          height: 36,
+                          child: CustomButton(
+                            text: AppStrings.assign,
+                            onPressed: () => _showAssignBottomSheet(context, req),
+                            height: 36,
+                            borderRadius: 8,
+                          ),
+                        ),
+                      if (req.status != 'new' && req.status != 'completed')
+                        SizedBox(
+                          width: 120,
+                          height: 36,
+                          child: CustomButton(
+                            text: req.status == 'assigned'
+                                ? 'Start Job'
+                                : 'Complete',
+                            onPressed: () => _advanceRequest(context, req),
+                            height: 36,
+                            borderRadius: 8,
+                          ),
+                        ),
+                      TextButton(
+                        onPressed: () => _showEditBottomSheet(context, req),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF007FFF),
+                          padding: const EdgeInsets.only(top: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Edit'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if ((req.technicianName ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Assigned to ${req.technicianName}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                ],
+                  ],
+                ),
+              ],
+              if ((req.notes ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  req.notes!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    context.read<DispatchBloc>().add(DeleteServiceRequest(req.id));
+                  },
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  child: const Text('Delete'),
+                ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _showEditBottomSheet(BuildContext context, ServiceRequest request) {
+    final dispatchBloc = context.read<DispatchBloc>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BlocProvider.value(
+        value: dispatchBloc,
+        child: AddServiceRequestBottomSheet(requestToEdit: request),
+      ),
     );
   }
 
@@ -435,11 +526,22 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
         return _AssignTechnicianSheet(
           request: request,
           onAssign: (techName, notes) {
-            final updatedRequest = request.copyWith(status: 'assigned');
+            final updatedRequest = request.copyWith(
+              status: 'assigned',
+              technicianName: techName,
+              notes: notes.trim().isEmpty ? request.notes : notes.trim(),
+            );
             dispatchBloc.add(UpdateServiceRequest(updatedRequest));
           },
         );
       },
+    );
+  }
+
+  void _advanceRequest(BuildContext context, ServiceRequest request) {
+    final nextStatus = request.status == 'assigned' ? 'in_progress' : 'completed';
+    context.read<DispatchBloc>().add(
+      UpdateServiceRequest(request.copyWith(status: nextStatus)),
     );
   }
 }
@@ -458,6 +560,13 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
   String? _selectedTechnician;
   final TextEditingController _notesController = TextEditingController();
   final TechnicianRepository _technicianRepository = TechnicianRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTechnician = widget.request.technicianName;
+    _notesController.text = widget.request.notes ?? '';
+  }
 
   @override
   void dispose() {

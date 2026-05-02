@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../customer/repositories/customer_repository.dart';
+import '../../dispatch/repositories/dispatch_repository.dart';
+import '../../inventory/repositories/inventory_repository.dart';
 
 // --- Events ---
 abstract class NotificationsEvent extends Equatable {
@@ -84,7 +87,18 @@ class NotificationsError extends NotificationsState {
 
 // --- Bloc ---
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
-  NotificationsBloc() : super(NotificationsInitial()) {
+  final InventoryRepository inventoryRepository;
+  final DispatchRepository dispatchRepository;
+  final CustomerRepository customerRepository;
+
+  NotificationsBloc({
+    InventoryRepository? inventoryRepository,
+    DispatchRepository? dispatchRepository,
+    CustomerRepository? customerRepository,
+  }) : inventoryRepository = inventoryRepository ?? InventoryRepository(),
+       dispatchRepository = dispatchRepository ?? DispatchRepository(),
+       customerRepository = customerRepository ?? CustomerRepository(),
+       super(NotificationsInitial()) {
     on<LoadNotifications>(_onLoadNotifications);
     on<FilterNotifications>(_onFilterNotifications);
     on<MarkNotificationRead>(_onMarkRead);
@@ -95,60 +109,107 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     Emitter<NotificationsState> emit,
   ) async {
     emit(NotificationsLoading());
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final inventory = await inventoryRepository.getInventory();
+      final requests = await dispatchRepository.getServiceRequests();
+      final customers = await customerRepository.getCustomers();
 
-    final notifications = [
-      {
-        'id': '1',
-        'type': 'urgent',
-        'category': 'Inventory',
-        'title': 'Critical: Low Stock',
-        'time': '2m ago',
-        'content':
-            'RO Filter Membrane stock is below 10 units. Reorder required immediately to avoid service delays.',
-        'isRead': false,
-        'icon': 'package',
-      },
-      {
-        'id': '2',
-        'type': 'urgent',
-        'category': 'Service',
-        'title': 'Overdue Maintenance',
-        'time': '1h ago',
-        'content':
-            'AMC for Mr. Sharma (ID: #4402) was due yesterday. No technician assigned yet.',
-        'isRead': false,
-        'icon': 'alert',
-      },
-      {
-        'id': '3',
-        'type': 'normal',
-        'category': 'Service',
-        'title': 'New Service Request',
-        'time': '3h ago',
-        'content': 'Customer requested a TDS check at Sector 45, Green Villa.',
-        'isRead': false,
-        'icon': 'wrench',
-      },
-      {
-        'id': '4',
-        'type': 'normal',
-        'category': 'Inventory',
-        'title': 'Stock Delivered',
-        'time': '5h ago',
-        'content':
-            'Consignment #INV-9021 (Sediment Filters) has been received at Main Hub.',
-        'isRead': true,
-        'icon': 'truck',
-      },
-    ];
+      final notifications = <Map<String, dynamic>>[];
 
-    emit(
-      NotificationsLoaded(
-        allNotifications: notifications,
-        filteredNotifications: notifications,
-      ),
-    );
+      final lowStockItems = inventory
+          .where((item) => item.stock <= item.lowStockThreshold)
+          .take(3);
+      for (final item in lowStockItems) {
+        notifications.add({
+          'id': 'inventory-${item.id}',
+          'type': 'urgent',
+          'category': 'Inventory',
+          'title': 'Critical: Low Stock',
+          'time': 'Now',
+          'content':
+              '${item.name} is at ${item.stock} units, below the threshold of ${item.lowStockThreshold}.',
+          'isRead': false,
+          'icon': 'package',
+          'actionLabel': 'Open Inventory',
+          'actionRoute': 'inventory',
+        });
+      }
+
+      final unassignedDueCustomers = customers
+          .where((customer) => customer.status == 'Service Due')
+          .take(3);
+      for (final customer in unassignedDueCustomers) {
+        notifications.add({
+          'id': 'customer-${customer.id}',
+          'type': 'urgent',
+          'category': 'Service',
+          'title': 'Service Follow-up Needed',
+          'time': customer.upcomingServiceDate ?? customer.lastService,
+          'content':
+              '${customer.name} in ${customer.area} is marked as Service Due. Schedule a visit soon.',
+          'isRead': false,
+          'icon': 'alert',
+          'actionLabel': 'Open Dispatch',
+          'actionRoute': 'dispatch',
+        });
+      }
+
+      for (final request in requests.where((req) => req.status == 'new')) {
+        notifications.add({
+          'id': 'request-${request.id}',
+          'type': 'normal',
+          'category': 'Service',
+          'title': 'New Service Request',
+          'time': request.time,
+          'content': '${request.customerName} requested ${request.type}.',
+          'isRead': false,
+          'icon': 'wrench',
+          'actionLabel': 'Review Request',
+          'actionRoute': 'dispatch',
+        });
+      }
+
+      for (final request in requests.where((req) => req.status == 'assigned')) {
+        notifications.add({
+          'id': 'assigned-${request.id}',
+          'type': 'normal',
+          'category': 'Service',
+          'title': 'Technician Assigned',
+          'time': request.time,
+          'content':
+              '${request.technicianName ?? 'A technician'} has been assigned to ${request.customerName}.',
+          'isRead': false,
+          'icon': 'wrench',
+          'actionLabel': 'Open Dispatch',
+          'actionRoute': 'dispatch',
+        });
+      }
+
+      if (notifications.isEmpty) {
+        notifications.add({
+          'id': 'empty-state',
+          'type': 'normal',
+          'category': 'Service',
+          'title': 'Everything Looks Good',
+          'time': 'Now',
+          'content':
+              'No urgent inventory or service issues were found in the local database.',
+          'isRead': true,
+          'icon': 'truck',
+          'actionLabel': 'Open Dashboard',
+          'actionRoute': 'dashboard',
+        });
+      }
+
+      emit(
+        NotificationsLoaded(
+          allNotifications: notifications,
+          filteredNotifications: notifications,
+        ),
+      );
+    } catch (e) {
+      emit(NotificationsError(e.toString()));
+    }
   }
 
   void _onFilterNotifications(

@@ -8,6 +8,7 @@ import '../../../widgets/header_text.dart';
 import '../../supplier/repositories/supplier_repository.dart';
 import '../bloc/inventory_bloc.dart';
 import '../models/inventory_item.dart';
+import '../repositories/inventory_repository.dart';
 
 class AddInventoryItemBottomSheet extends StatefulWidget {
   final InventoryItem? itemToEdit;
@@ -21,6 +22,7 @@ class AddInventoryItemBottomSheet extends StatefulWidget {
 
 class _AddInventoryItemBottomSheetState
     extends State<AddInventoryItemBottomSheet> {
+  final InventoryRepository _inventoryRepository = InventoryRepository();
   String _name = '';
   String _mrp = '';
   String _supplier = '';
@@ -29,19 +31,13 @@ class _AddInventoryItemBottomSheetState
   String _lowStockThreshold = '';
   String _selectedCategory = 'Filters';
   List<String> _existingSuppliers = [];
+  List<String> _categories = const ['Filters'];
   bool _isEditing = true;
-
-  final List<String> _categories = [
-    'Filters',
-    'Membranes',
-    'Pumps',
-    'UV Lamps',
-    'Other',
-  ];
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     if (widget.itemToEdit != null) {
       _name = widget.itemToEdit!.name;
       _mrp = widget.itemToEdit!.mrp.toString();
@@ -49,13 +45,7 @@ class _AddInventoryItemBottomSheetState
       _price = widget.itemToEdit!.price.toString();
       _stock = widget.itemToEdit!.stock.toString();
       _lowStockThreshold = widget.itemToEdit!.lowStockThreshold.toString();
-
-      final category = widget.itemToEdit!.category;
-      if (_categories.contains(category)) {
-        _selectedCategory = category;
-      } else {
-        _selectedCategory = _categories.first;
-      }
+      _selectedCategory = widget.itemToEdit!.category;
       _isEditing = false;
     }
     _loadSuppliers();
@@ -72,6 +62,66 @@ class _AddInventoryItemBottomSheetState
     } catch (e) {
       // Ignore errors silently for now, generic text field behavior takes over.
     }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _inventoryRepository.getCategories();
+      final available = categories.where((category) => category != 'All').toList();
+      if (mounted && available.isNotEmpty) {
+        setState(() {
+          _categories = available;
+          if (!_categories.contains(_selectedCategory)) {
+            _selectedCategory = _categories.first;
+          }
+        });
+      }
+    } catch (_) {
+      // Keep fallback categories if loading fails.
+    }
+  }
+
+  Future<void> _showCreateCategoryDialog() async {
+    final controller = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Create Category'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Pump, Filter, Membrane',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final categoryName = controller.text.trim();
+              if (categoryName.isEmpty) return;
+
+              context.read<InventoryBloc>().add(AddInventoryCategory(categoryName));
+              if (!_categories.contains(categoryName)) {
+                setState(() {
+                  _categories = [..._categories, categoryName]..sort(
+                    (a, b) => a.toLowerCase().compareTo(b.toLowerCase()),
+                  );
+                  _selectedCategory = categoryName;
+                });
+              }
+              Navigator.pop(dialogContext);
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _submitForm() {
@@ -235,41 +285,62 @@ class _AddInventoryItemBottomSheetState
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF007FFF)),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        items: _categories.map((cat) {
+                          return DropdownMenuItem(value: cat, child: Text(cat));
+                        }).toList(),
+                        onChanged: _isEditing
+                            ? (val) {
+                                if (val != null) {
+                                  setState(() => _selectedCategory = val);
+                                }
+                              }
+                            : null,
+                        disabledHint: Text(
+                          _selectedCategory,
+                          style: const TextStyle(color: Color(0xFF64748B)),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF007FFF)),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    items: _categories.map((cat) {
-                      return DropdownMenuItem(value: cat, child: Text(cat));
-                    }).toList(),
-                    onChanged: _isEditing
-                        ? (val) {
-                            if (val != null)
-                              setState(() => _selectedCategory = val);
-                          }
-                        : null,
-                    disabledHint: Text(
-                      _selectedCategory,
-                      style: const TextStyle(color: Color(0xFF64748B)),
-                    ),
+                      if (_isEditing)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: _showCreateCategoryDialog,
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add Category'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF007FFF),
+                              padding: const EdgeInsets.only(top: 8),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
