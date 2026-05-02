@@ -22,6 +22,7 @@ import '../../supplier/screens/supplier_directory_screen.dart';
 import '../../technician/screens/technicians_screen.dart';
 import '../bloc/dashboard_bloc.dart';
 import 'scheduled_services_screen.dart';
+import '../../../widgets/sleek_animation_wrapper.dart';
 // Note: Icon usage and exact colors may need refinement
 // but this implements the structure and Bloc usage.
 
@@ -472,43 +473,55 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
     physics: const NeverScrollableScrollPhysics(),
     childAspectRatio: isDesktop ? 1.5 : 1.2,
     children: [
-      _StatCard(
-        title: AppStrings.totalInventory,
-        value: stats['totalInventory'],
-        icon: Icons.inventory_2_outlined,
-        iconBgColor: Colors.blue.shade50,
-        iconColor: Colors.blue.shade600,
-        badgeLabel: stats['totalInventoryBadge'] as String,
-        badgeTone: stats['totalInventoryBadgeTone'] as String,
+      SleekAnimationWrapper(
+        delay: const Duration(milliseconds: 100),
+        child: _StatCard(
+          title: AppStrings.totalInventory,
+          value: stats['totalInventory'],
+          icon: Icons.inventory_2_outlined,
+          iconBgColor: Colors.blue.shade50,
+          iconColor: Colors.blue.shade600,
+          badgeLabel: stats['totalInventoryBadge'] as String,
+          badgeTone: stats['totalInventoryBadgeTone'] as String,
+        ),
       ),
-      _StatCard(
-        title: AppStrings.pendingService,
-        value: stats['pendingService'],
-        icon: Icons.build_outlined,
-        iconBgColor: const Color(0xFF007FFF).withValues(alpha: 0.1),
-        iconColor: const Color(0xFF007FFF),
-        badgeLabel:
-            '${stats['underwayJobs']} underway • ${stats['pendingServiceBadge']}',
-        badgeTone: stats['pendingServiceBadgeTone'] as String,
+      SleekAnimationWrapper(
+        delay: const Duration(milliseconds: 200),
+        child: _StatCard(
+          title: AppStrings.pendingService,
+          value: stats['pendingService'],
+          icon: Icons.build_outlined,
+          iconBgColor: const Color(0xFF007FFF).withValues(alpha: 0.1),
+          iconColor: const Color(0xFF007FFF),
+          badgeLabel:
+              '${stats['underwayJobs']} underway • ${stats['pendingServiceBadge']}',
+          badgeTone: stats['pendingServiceBadgeTone'] as String,
+        ),
       ),
-      _StatCard(
-        title: AppStrings.totalCustomers,
-        value: stats['totalCustomers'],
-        icon: Icons.group_outlined,
-        iconBgColor: Colors.grey.shade100,
-        iconColor: Colors.grey.shade600,
-        badgeLabel: stats['totalCustomersBadge'] as String,
-        badgeTone: stats['totalCustomersBadgeTone'] as String,
+      SleekAnimationWrapper(
+        delay: const Duration(milliseconds: 300),
+        child: _StatCard(
+          title: AppStrings.totalCustomers,
+          value: stats['totalCustomers'],
+          icon: Icons.group_outlined,
+          iconBgColor: Colors.grey.shade100,
+          iconColor: Colors.grey.shade600,
+          badgeLabel: stats['totalCustomersBadge'] as String,
+          badgeTone: stats['totalCustomersBadgeTone'] as String,
+        ),
       ),
-      _StatCard(
-        title: AppStrings.lowStock,
-        value: stats['lowStock'],
-        icon: Icons.warning_amber_rounded,
-        iconBgColor: Colors.red.shade50,
-        iconColor: Colors.red.shade600,
-        badgeLabel: stats['lowStockBadge'] as String,
-        badgeTone: stats['lowStockBadgeTone'] as String,
-        isAlert: true,
+      SleekAnimationWrapper(
+        delay: const Duration(milliseconds: 400),
+        child: _StatCard(
+          title: AppStrings.lowStock,
+          value: stats['lowStock'],
+          icon: Icons.warning_amber_rounded,
+          iconBgColor: Colors.red.shade50,
+          iconColor: Colors.red.shade600,
+          badgeLabel: stats['lowStockBadge'] as String,
+          badgeTone: stats['lowStockBadgeTone'] as String,
+          isAlert: true,
+        ),
       ),
     ],
   );
@@ -592,16 +605,20 @@ Widget _buildQuickActions(BuildContext context) {
           Wrap(
             spacing: spacing,
             runSpacing: spacing,
-            children: actions
-                .map(
-                  (action) => _QuickActionBtn(
-                    icon: action.icon,
-                    label: action.label,
-                    width: buttonWidth,
-                    onTap: action.onTap,
-                  ),
-                )
-                .toList(),
+            children: actions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final action = entry.value;
+              return SleekAnimationWrapper(
+                delay: Duration(milliseconds: 500 + (index * 50)),
+                offset: const Offset(0, 0.05),
+                child: _QuickActionBtn(
+                  icon: action.icon,
+                  label: action.label,
+                  width: buttonWidth,
+                  onTap: action.onTap,
+                ),
+              );
+            }).toList(),
           ),
         ],
       );
@@ -661,81 +678,81 @@ Widget _buildScheduledServices(
             final statusLabel = status.replaceAll('_', ' ').toUpperCase();
             final isPending = status != 'completed';
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.blue.shade200.withValues(alpha: 0.5),
+            return SleekAnimationWrapper(
+              delay: Duration(milliseconds: 600 + (index * 100)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007FFF).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.build_outlined,
+                        color: Color(0xFF007FFF),
+                        size: 20,
                       ),
                     ),
-                    child: Icon(
-                      Icons.build_circle_outlined,
-                      color: Colors.blue.shade600,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SemiBoldTextView(
-                          text: service['title'] as String,
-                          fontSize: 14,
-                        ),
-                        const SizedBox(height: 2),
-                        SubRegularText(
-                          text: 'Customer: ${service['customerName']}',
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              service['time'] as String,
-                              style: const TextStyle(
-                                color: Color(0xFF007FFF),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SemiBoldTextView(
+                            text: service['title'] as String,
+                            fontSize: 14,
+                          ),
+                          const SizedBox(height: 2),
+                          SubRegularText(
+                            text: 'Customer: ${service['customerName']}',
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                service['time'] as String,
+                                style: const TextStyle(
+                                  color: Color(0xFF007FFF),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            if (service['status'] != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isPending
-                                      ? Colors.orange.shade50
-                                      : Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  statusLabel,
-                                  style: TextStyle(
-                                    fontSize: 10,
+                              const SizedBox(width: 12),
+                              if (service['status'] != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color: isPending
-                                        ? Colors.orange.shade700
-                                        : Colors.green.shade700,
-                                    fontWeight: FontWeight.bold,
+                                        ? Colors.orange.shade50
+                                        : Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    statusLabel,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isPending
+                                          ? Colors.orange.shade700
+                                          : Colors.green.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -802,45 +819,48 @@ Widget _buildRecentActivity(
               break;
           }
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: iconColor.withValues(alpha: 0.2)),
+          return SleekAnimationWrapper(
+            delay: Duration(milliseconds: 800 + (index * 100)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: iconColor.withValues(alpha: 0.2)),
+                    ),
+                    child: Icon(iconToUse, color: iconColor, size: 20),
                   ),
-                  child: Icon(iconToUse, color: iconColor, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SemiBoldTextView(
-                        text: activity['title'] as String,
-                        fontSize: 14,
-                      ),
-                      const SizedBox(height: 2),
-                      SubRegularText(text: activity['desc'] as String),
-                      const SizedBox(height: 4),
-                      Text(
-                        activity['time'] as String,
-                        style: const TextStyle(
-                          color: Color(0xFF007FFF),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SemiBoldTextView(
+                          text: activity['title'] as String,
+                          fontSize: 14,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        SubRegularText(text: activity['desc'] as String),
+                        const SizedBox(height: 4),
+                        Text(
+                          activity['time'] as String,
+                          style: const TextStyle(
+                            color: Color(0xFF007FFF),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -1033,7 +1053,7 @@ class _OnboardingActions extends StatelessWidget {
   }
 }
 
-class _QuickActionBtn extends StatelessWidget {
+class _QuickActionBtn extends StatefulWidget {
   final IconData icon;
   final String label;
   final double width;
@@ -1047,41 +1067,55 @@ class _QuickActionBtn extends StatelessWidget {
   });
 
   @override
+  State<_QuickActionBtn> createState() => _QuickActionBtnState();
+}
+
+class _QuickActionBtnState extends State<_QuickActionBtn> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: width,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: const Color(0xFF007FFF), size: 24),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF475569),
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          width: widget.width,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, color: const Color(0xFF007FFF), size: 24),
+              const SizedBox(height: 8),
+              Text(
+                widget.label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF475569),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1142,7 +1176,7 @@ class _WelcomeActionChip extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _StatCard extends StatefulWidget {
   final String title;
   final String value;
   final IconData icon;
@@ -1164,83 +1198,99 @@ class _StatCard extends StatelessWidget {
   });
 
   @override
+  State<_StatCard> createState() => _StatCardState();
+}
+
+class _StatCardState extends State<_StatCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    final badgeColors = _badgeColors(badgeTone, isAlert);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    final badgeColors = _badgeColors(widget.badgeTone, widget.isAlert);
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeColors.$1,
-                    borderRadius: BorderRadius.circular(4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.iconBgColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(widget.icon, color: widget.iconColor, size: 24),
                   ),
-                  child: Text(
-                    badgeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: badgeColors.$2,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: badgeColors.$1,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        widget.badgeLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: badgeColors.$2,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    widget.value,
+                    style: TextStyle(
+                      color: widget.isAlert
+                          ? Colors.red.shade600
+                          : const Color(0xFF0F172A),
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: isAlert
-                      ? Colors.red.shade600
-                      : const Color(0xFF0F172A),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
