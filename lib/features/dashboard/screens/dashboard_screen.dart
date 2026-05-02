@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/db_exporter.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../widgets/responsive_layout.dart';
 
@@ -38,29 +39,81 @@ class DashboardScreen extends StatelessWidget {
           backgroundColor: Colors.white,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.download_rounded, color: Color(0xFF007FFF)),
+              tooltip: 'Download Database',
+              onPressed: () => DbExporter.exportDatabase(),
+            ),
             Builder(
               builder: (buttonContext) => IconButton(
                 icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
                 tooltip: 'Clear All Data',
                 onPressed: () {
+                  bool shouldBackup = true;
+                  final passwordController = TextEditingController();
+
                   showDialog(
                     context: buttonContext,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Clear All Data?'),
-                      content: const Text('This will delete all customers, inventory, and history. This action cannot be undone.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel'),
+                    builder: (dialogContext) => StatefulBuilder(
+                      builder: (context, setDialogState) => AlertDialog(
+                        title: const Text('Confirm Data Clearance'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'This action will delete all customers, inventory, and history. It cannot be undone.',
+                              style: TextStyle(fontSize: 13, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 20),
+                            CheckboxListTile(
+                              value: shouldBackup,
+                              onChanged: (val) => setDialogState(() => shouldBackup = val ?? false),
+                              title: const Text('Backup before deleting', style: TextStyle(fontSize: 14)),
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: passwordController,
+                              obscureText: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Enter Password to Confirm',
+                                hintText: 'password123',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () {
-                            buttonContext.read<DashboardBloc>().add(DashboardDataClearRequested());
-                            Navigator.pop(dialogContext);
-                          },
-                          child: const Text('Clear', style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                            onPressed: () async {
+                              // Verify password (matching the default credentials)
+                              if (passwordController.text == "password123") {
+                                if (shouldBackup) {
+                                  await DbExporter.exportDatabase();
+                                }
+                                if (buttonContext.mounted) {
+                                  buttonContext.read<DashboardBloc>().add(DashboardDataClearRequested());
+                                }
+                                if (dialogContext.mounted) {
+                                  Navigator.pop(dialogContext);
+                                }
+                              } else {
+                                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                  const SnackBar(content: Text('Incorrect password!'), backgroundColor: Colors.red),
+                                );
+                              }
+                            },
+                            child: const Text('Confirm & Clear'),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
