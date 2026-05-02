@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:roapp/features/access/screens/app_access_gate.dart';
 import '../../../core/utils/db_exporter.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -230,6 +231,110 @@ class _ProfileScreenState extends State<ProfileScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> _clearAllData() async {
+    bool shouldBackup = context.read<SettingsCubit>().state.autoBackupEnabled;
+    final passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Confirm Data Clearance'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This action will delete all customers, inventory, and history. It cannot be undone.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              CheckboxListTile(
+                value: shouldBackup,
+                onChanged: (val) => setDialogState(
+                  () => shouldBackup = val ?? false,
+                ),
+                title: const Text(
+                  'Backup before deleting',
+                  style: TextStyle(fontSize: 14),
+                ),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Password to Confirm',
+                  hintText: 'password123',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (passwordController.text ==
+                    AuthRepository.defaultAdminPasskey) {
+                  if (shouldBackup) {
+                    try {
+                      final message = await DbExporter.exportDatabase();
+                      if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(
+                          dialogContext,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      }
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(
+                          dialogContext,
+                        ).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
+                      return;
+                    }
+                  }
+                  try {
+                    await DatabaseHelper.instance.clearAllData();
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(content: Text('All data cleared.')),
+                      );
+                    }
+                  } catch (e) {
+                    if (dialogContext.mounted) {
+                      ScaffoldMessenger.of(
+                        dialogContext,
+                      ).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  }
+                } else {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Incorrect password!'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirm & Clear'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showBusinessProfileSheet() async {
@@ -535,12 +640,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _exportBackup,
-                      icon: const Icon(Icons.ios_share_outlined),
-                      label: const Text('Export Backup'),
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('Download Database'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
                         side: const BorderSide(color: Color(0xFFBFDBFE)),
                         foregroundColor: const Color(0xFF007FFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _clearAllData,
+                      icon: const Icon(Icons.delete_sweep_outlined),
+                      label: const Text('Clear All Data'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        side: BorderSide(color: Colors.red.shade100),
+                        foregroundColor: Colors.red,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
