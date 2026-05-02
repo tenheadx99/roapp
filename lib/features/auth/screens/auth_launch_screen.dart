@@ -9,19 +9,16 @@ class AuthLaunchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthAuthenticated) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
-          );
-        } else if (state is AuthUnauthenticated || state is AuthError) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
-          );
-        }
-      },
+    return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
+        if (state is AuthAuthenticated) {
+          return const DashboardScreen();
+        }
+
+        if (state is AuthUnauthenticated || state is AuthError) {
+          return const LoginScreen();
+        }
+
         return Scaffold(
           backgroundColor: const Color(0xFFF5F7F8),
           body: Center(

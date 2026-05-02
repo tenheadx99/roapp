@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:roapp/features/access/screens/app_access_gate.dart';
 import '../../../core/utils/db_exporter.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
@@ -195,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _logout() {
     context.read<AuthBloc>().add(LogoutRequested());
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const AppAccessGate()),
       (route) => false,
     );
   }

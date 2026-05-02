@@ -13,6 +13,8 @@ class SettingsRepository {
   static const _businessPhoneKey = 'business_phone';
   static const _businessAddressKey = 'business_address';
   static const _backupPolicyKey = 'backup_policy';
+  static const _trialStartedAtKey = 'trial_started_at';
+  static const _trialOverrideUnlockedKey = 'trial_override_unlocked';
 
   final DatabaseHelper dbHelper;
 
@@ -26,8 +28,17 @@ class SettingsRepository {
       for (final row in records)
         row['key'] as String: row['value'] as String? ?? '',
     };
+    final trialStartedAt = _parseString(
+      settingsMap[_trialStartedAtKey],
+      DateTime.now().toIso8601String(),
+    );
+
+    if ((settingsMap[_trialStartedAtKey] ?? '').trim().isEmpty) {
+      await _writeSetting(_trialStartedAtKey, trialStartedAt);
+    }
 
     return AppSettings(
+      isInitialized: true,
       themeMode: AppSettings.themeModeFromStorage(settingsMap[_themeModeKey]),
       notificationsEnabled: _parseBool(
         settingsMap[_notificationsEnabledKey],
@@ -48,6 +59,11 @@ class SettingsRepository {
       backupPolicy: _parseString(
         settingsMap[_backupPolicyKey],
         'Manual + Before Clear',
+      ),
+      trialStartedAt: trialStartedAt,
+      trialOverrideUnlocked: _parseBool(
+        settingsMap[_trialOverrideUnlockedKey],
+        defaultValue: false,
       ),
     );
   }
@@ -87,6 +103,10 @@ class SettingsRepository {
 
   Future<void> updateBackupPolicy(String value) async {
     await _writeSetting(_backupPolicyKey, value);
+  }
+
+  Future<void> updateTrialOverrideUnlocked(bool unlocked) async {
+    await _writeSetting(_trialOverrideUnlockedKey, unlocked ? '1' : '0');
   }
 
   Future<void> _writeSetting(String key, String value) async {

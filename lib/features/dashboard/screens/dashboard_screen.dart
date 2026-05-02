@@ -17,6 +17,7 @@ import '../../notifications/screens/notifications_screen.dart';
 import '../../operations/screens/operations_center_screen.dart';
 import '../../search/screens/global_search_screen.dart';
 import '../../settings/bloc/settings_cubit.dart';
+import '../../settings/models/app_settings.dart';
 import '../../supplier/screens/supplier_directory_screen.dart';
 import '../../technician/screens/technicians_screen.dart';
 import '../bloc/dashboard_bloc.dart';
@@ -439,6 +440,7 @@ Widget _buildWelcomeBanner(
   bool isDesktop = false,
 }) {
   final authState = context.watch<AuthBloc>().state;
+  final settings = context.watch<SettingsCubit>().state;
   final user = authState is AuthAuthenticated ? authState.user : null;
   final pendingService = stats['pendingService'] ?? '0';
   final lowStock = stats['lowStock'] ?? '0';
@@ -470,6 +472,7 @@ Widget _buildWelcomeBanner(
                   user,
                   pendingService.toString(),
                   lowStock.toString(),
+                  settings,
                 ),
               ),
               const SizedBox(width: 20),
@@ -484,6 +487,7 @@ Widget _buildWelcomeBanner(
                 user,
                 pendingService.toString(),
                 lowStock.toString(),
+                settings,
               ),
               const SizedBox(height: 16),
               _buildWelcomeActions(context),
@@ -497,6 +501,7 @@ Widget _buildWelcomeText(
   User? user,
   String pendingService,
   String lowStock,
+  AppSettings settings,
 ) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,6 +521,24 @@ Widget _buildWelcomeText(
           color: Colors.white.withValues(alpha: 0.92),
           fontSize: 14,
           height: 1.4,
+        ),
+      ),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          settings.trialOverrideUnlocked
+              ? 'Admin override is active for this installation.'
+              : 'Trial access: ${settings.daysRemainingInTrial} day(s) remaining.',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.95),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     ],

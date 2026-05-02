@@ -31,6 +31,7 @@ void main() {
         await repository.updateBackupPolicy('Manual');
 
         final loaded = await repository.loadSettings();
+        expect(loaded.isInitialized, true);
         expect(loaded.themeMode, ThemeMode.dark);
         expect(loaded.languageCode, 'hi');
         expect(loaded.dateFormat, 'dd/MM/yyyy');
@@ -38,6 +39,8 @@ void main() {
         expect(loaded.businessPhone, '+91 9000000000');
         expect(loaded.businessAddress, 'Rohini, Delhi');
         expect(loaded.backupPolicy, 'Manual');
+        expect(loaded.trialStartedAt, isNotEmpty);
+        expect(loaded.trialOverrideUnlocked, false);
       },
     );
   });

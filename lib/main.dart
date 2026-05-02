@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'features/access/screens/app_access_gate.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/repositories/auth_repository.dart';
-import 'features/auth/screens/auth_launch_screen.dart';
 import 'features/settings/bloc/settings_cubit.dart';
 import 'features/settings/models/app_settings.dart';
 import 'features/settings/repositories/settings_repository.dart';
@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
             themeMode: settings.themeMode,
             theme: _buildLightTheme(),
             darkTheme: _buildDarkTheme(),
-            home: const AuthLaunchScreen(),
+            home: const AppAccessGate(),
           );
         },
       ),

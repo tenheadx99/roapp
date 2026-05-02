@@ -62,4 +62,9 @@ class SettingsCubit extends Cubit<AppSettings> {
     await repository.updateBackupPolicy(value);
     emit(state.copyWith(backupPolicy: value));
   }
+
+  Future<void> setTrialOverrideUnlocked(bool unlocked) async {
+    await repository.updateTrialOverrideUnlocked(unlocked);
+    emit(state.copyWith(trialOverrideUnlocked: unlocked, isInitialized: true));
+  }
 }
