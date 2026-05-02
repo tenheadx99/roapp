@@ -35,36 +35,50 @@ class _DispatchHubView extends StatefulWidget {
 class _DispatchHubViewState extends State<_DispatchHubView> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: HeaderText(text: AppStrings.dispatchHubTitle, fontSize: 18),
-        backgroundColor: Colors.white,
+        title: HeaderText(
+          text: AppStrings.dispatchHubTitle,
+          fontSize: 18,
+          color: foreground,
+        ),
+        backgroundColor:
+            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        foregroundColor: foreground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: foreground),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Column(
-        children: [
-          _buildCalendarHeader(),
-          _buildTabs(),
-          Expanded(
-            child: BlocBuilder<DispatchBloc, DispatchState>(
-              builder: (context, state) {
-                if (state is DispatchLoading || state is DispatchInitial) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (state is DispatchError) {
-                  return Center(child: Text(state.message));
-                } else if (state is DispatchLoaded) {
-                  return _buildRequestList(state.filteredRequests);
-                }
-                return const SizedBox();
-              },
-            ),
-          ),
-        ],
+      body: BlocBuilder<DispatchBloc, DispatchState>(
+        builder: (context, state) {
+          final loadedState = state is DispatchLoaded ? state : null;
+          return Column(
+            children: [
+              _buildCalendarHeader(context, loadedState),
+              _buildTabs(),
+              Expanded(
+                child: switch (state) {
+                  DispatchLoading() || DispatchInitial() =>
+                    const Center(child: CircularProgressIndicator()),
+                  DispatchError() => Center(child: Text(state.message)),
+                  DispatchLoaded() => _buildRequestList(
+                    state.filteredRequests,
+                    state.activeTab,
+                    state.selectedDate,
+                  ),
+                  _ => const SizedBox(),
+                },
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: Builder(
         builder: (context) {
@@ -90,17 +104,19 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     );
   }
 
-  Widget _buildCalendarHeader() {
-    final days = [
-      {'day': 'Mon', 'date': '02', 'active': false},
-      {'day': 'Tue', 'date': '03', 'active': false},
-      {'day': 'Wed', 'date': '04', 'active': false},
-      {'day': 'Thu', 'date': '05', 'active': true},
-      {'day': 'Fri', 'date': '06', 'active': false},
-    ];
+  Widget _buildCalendarHeader(BuildContext context, DispatchLoaded? state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final selectedDate = state?.selectedDate;
+    final anchorDate = selectedDate ?? DateTime.now();
+    final startDate = DateTime(anchorDate.year, anchorDate.month, anchorDate.day);
+    final days = List.generate(
+      7,
+      (index) => startDate.add(Duration(days: index)),
+    );
 
     return Container(
-      color: Colors.white,
+      color: isDark ? theme.cardColor : Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
@@ -109,30 +125,35 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'OCTOBER 2023',
+                Text(
+                  _formatMonthLabel(anchorDate),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF64748B),
+                    color: isDark
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF64748B),
                     letterSpacing: 1,
                   ),
                 ),
                 Row(
                   children: [
-                    const Text(
-                      AppStrings.fullCalendar,
-                      style: TextStyle(
-                        color: Color(0xFF007FFF),
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                    TextButton.icon(
+                      onPressed: () => _pickDate(context, selectedDate),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF007FFF),
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.calendar_month,
-                      color: Color(0xFF007FFF),
-                      size: 14,
+                      icon: const Icon(Icons.calendar_month, size: 14),
+                      label: const Text(
+                        AppStrings.fullCalendar,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -144,57 +165,30 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
             child: Row(
               children: [
                 const SizedBox(width: 16),
-                ...days.map((d) {
-                  final isActive = d['active'] as bool;
-                  return Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8,
-                      horizontal: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? const Color(0xFF007FFF)
-                          : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isActive
-                            ? const Color(0xFF007FFF)
-                            : const Color(0xFFF1F5F9),
-                      ),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF007FFF).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          (d['day'] as String).toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isActive
-                                ? Colors.white.withOpacity(0.8)
-                                : const Color(0xFF94A3B8),
-                          ),
-                        ),
-                        Text(
-                          d['date'] as String,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isActive
-                                ? Colors.white
-                                : const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
+                _DateChip(
+                  labelTop: 'ALL',
+                  labelBottom: 'Dates',
+                  isActive: selectedDate == null,
+                  onTap: () {
+                    context.read<DispatchBloc>().add(const SelectDispatchDate(null));
+                  },
+                ),
+                const SizedBox(width: 12),
+                ...days.map((date) {
+                  final isActive =
+                      selectedDate != null &&
+                      date.year == selectedDate.year &&
+                      date.month == selectedDate.month &&
+                      date.day == selectedDate.day;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: _DateChip(
+                      labelTop: _weekdayLabel(date),
+                      labelBottom: date.day.toString().padLeft(2, '0'),
+                      isActive: isActive,
+                      onTap: () {
+                        context.read<DispatchBloc>().add(SelectDispatchDate(date));
+                      },
                     ),
                   );
                 }),
@@ -206,12 +200,51 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     );
   }
 
+  Future<void> _pickDate(BuildContext context, DateTime? selectedDate) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+
+    if (picked == null || !context.mounted) return;
+    context.read<DispatchBloc>().add(SelectDispatchDate(picked));
+  }
+
+  String _formatMonthLabel(DateTime date) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${months[date.month - 1]} ${date.year}'.toUpperCase();
+  }
+
+  String _weekdayLabel(DateTime date) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekdays[date.weekday - 1].toUpperCase();
+  }
+
   Widget _buildTabs() {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).cardColor
+          : Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: BlocBuilder<DispatchBloc, DispatchState>(
         builder: (context, state) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           String activeTab = 'New';
           int newCount = 0;
           int assignedCount = 0;
@@ -219,17 +252,24 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
           int completedCount = 0;
 
           if (state is DispatchLoaded) {
+            final selectedDate = state.selectedDate;
             activeTab = state.activeTab;
-            newCount = state.allRequests.where((r) => r.status == 'new').length;
-            assignedCount = state.allRequests
-                .where((r) => r.status == 'assigned')
-                .length;
-            inProgressCount = state.allRequests
-                .where((r) => r.status == 'in_progress')
-                .length;
-            completedCount = state.allRequests
-                .where((r) => r.status == 'completed')
-                .length;
+            newCount = _countForStatus(state.allRequests, 'new', selectedDate);
+            assignedCount = _countForStatus(
+              state.allRequests,
+              'assigned',
+              selectedDate,
+            );
+            inProgressCount = _countForStatus(
+              state.allRequests,
+              'in_progress',
+              selectedDate,
+            );
+            completedCount = _countForStatus(
+              state.allRequests,
+              'completed',
+              selectedDate,
+            );
           }
 
           final tabs = [
@@ -271,7 +311,9 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                         fontWeight: FontWeight.bold,
                         color: isActive
                             ? Colors.white
-                            : const Color(0xFF475569),
+                            : (isDark
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF475569)),
                       ),
                     ),
                   ),
@@ -284,9 +326,61 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     );
   }
 
-  Widget _buildRequestList(List<ServiceRequest> requests) {
+  int _countForStatus(
+    List<ServiceRequest> requests,
+    String status,
+    DateTime? selectedDate,
+  ) {
+    return requests.where((request) {
+      if (request.status != status) return false;
+      if (selectedDate == null) return true;
+      final scheduled = DateTime.tryParse(request.scheduledFor ?? '');
+      if (scheduled == null) return false;
+      return scheduled.year == selectedDate.year &&
+          scheduled.month == selectedDate.month &&
+          scheduled.day == selectedDate.day;
+    }).length;
+  }
+
+  Widget _buildRequestList(
+    List<ServiceRequest> requests,
+    String activeTab,
+    DateTime? selectedDate,
+  ) {
     if (requests.isEmpty) {
-      return const Center(child: Text(AppStrings.noRequestsFound));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.event_busy_outlined,
+                size: 44,
+                color: Color(0xFF94A3B8),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                selectedDate == null
+                    ? 'No $activeTab requests right now.'
+                    : 'No $activeTab requests on ${_friendlyDate(selectedDate)}.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 6),
+              const SubRegularText(
+                text:
+                    'Try another date, clear the filter, or add a new service request.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return ListView.separated(
@@ -297,11 +391,18 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
         final req = requests[index];
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF1F2937)
+                  : const Color(0xFFE2E8F0),
+            ),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+              ),
             ],
           ),
           padding: const EdgeInsets.all(16),
@@ -317,16 +418,14 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF007FFF).withOpacity(0.1),
+                      color: _statusChipBg(req.status),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: const Color(0xFF007FFF).withOpacity(0.2),
-                      ),
+                      border: Border.all(color: _statusChipBorder(req.status)),
                     ),
                     child: Text(
                       req.statusLabel,
-                      style: const TextStyle(
-                        color: Color(0xFF007FFF),
+                      style: TextStyle(
+                        color: _statusChipText(req.status),
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
@@ -354,7 +453,32 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
               ),
               const SizedBox(height: 12),
               SemiBoldTextView(text: req.customerName, fontSize: 18),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
+              if (req.scheduledFor != null) ...[
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.event_outlined,
+                      size: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _friendlyDate(
+                          DateTime.tryParse(req.scheduledFor!) ?? DateTime.now(),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+              ],
               Row(
                 children: [
                   const Icon(
@@ -542,6 +666,140 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     final nextStatus = request.status == 'assigned' ? 'in_progress' : 'completed';
     context.read<DispatchBloc>().add(
       UpdateServiceRequest(request.copyWith(status: nextStatus)),
+    );
+  }
+
+  Color _statusChipBg(String status) {
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade50;
+      case 'in_progress':
+        return Colors.orange.shade50;
+      case 'assigned':
+        return Colors.blue.shade50;
+      default:
+        return const Color(0xFFDBEAFE);
+    }
+  }
+
+  Color _statusChipBorder(String status) {
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade200;
+      case 'in_progress':
+        return Colors.orange.shade200;
+      case 'assigned':
+        return Colors.blue.shade200;
+      default:
+        return const Color(0xFF93C5FD);
+    }
+  }
+
+  Color _statusChipText(String status) {
+    switch (status) {
+      case 'completed':
+        return Colors.green.shade700;
+      case 'in_progress':
+        return Colors.orange.shade700;
+      case 'assigned':
+        return Colors.blue.shade700;
+      default:
+        return const Color(0xFF1D4ED8);
+    }
+  }
+
+  String _friendlyDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return '${weekdays[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  final String labelTop;
+  final String labelBottom;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _DateChip({
+    required this.labelTop,
+    required this.labelBottom,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isActive ? const Color(0xFF007FFF) : const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive
+                  ? const Color(0xFF007FFF)
+                  : const Color(0xFFF1F5F9),
+            ),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF007FFF).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            children: [
+              Text(
+                labelTop,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isActive
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : const Color(0xFF94A3B8),
+                ),
+              ),
+              Text(
+                labelBottom,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

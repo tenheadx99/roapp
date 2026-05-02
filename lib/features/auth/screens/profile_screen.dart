@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/db_exporter.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -9,6 +10,7 @@ import '../../../widgets/sub_regular_text.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
+import '../../settings/bloc/settings_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../models/user.dart';
 import '../repositories/auth_repository.dart';
@@ -24,6 +26,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late User _currentUser;
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
@@ -42,10 +45,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.user.name);
-    _emailController = TextEditingController(text: widget.user.email);
-    _phoneController = TextEditingController(text: widget.user.phone);
-    _roleController = TextEditingController(text: widget.user.role);
+    _currentUser = widget.user;
+    _nameController = TextEditingController(text: _currentUser.name);
+    _emailController = TextEditingController(text: _currentUser.email);
+    _phoneController = TextEditingController(text: _currentUser.phone);
+    _roleController = TextEditingController(text: _currentUser.role);
     _currentPasskeyController = TextEditingController();
     _newPasskeyController = TextEditingController();
     _confirmPasskeyController = TextEditingController();
@@ -104,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final updated = await _authRepository.updateUserProfile(
-        widget.user.copyWith(
+        _currentUser.copyWith(
           name: name,
           email: email,
           phone: phone,
@@ -113,6 +117,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (!mounted) return;
+      setState(() {
+        _currentUser = updated;
+      });
       context.read<AuthBloc>().add(CurrentUserUpdated(updated));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully.')),
@@ -156,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       await _authRepository.updateUserPasskey(
-        userId: widget.user.id,
+        userId: _currentUser.id,
         currentPasskey: currentPasskey,
         newPasskey: newPasskey,
       );
@@ -191,9 +198,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _exportBackup() async {
+    try {
+      final message = await DbExporter.exportDatabase();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final previewUser = widget.user.copyWith(
+    final theme = Theme.of(context);
+    final foreground =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
+    final cardColor = theme.cardColor;
+    final appSettings = context.watch<SettingsCubit>().state;
+    final previewUser = _currentUser.copyWith(
       name: _nameController.text,
       email: _emailController.text,
       phone: _phoneController.text,
@@ -201,20 +228,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Profile',
           style: TextStyle(
-            color: Colors.black,
+            color: foreground,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor:
+            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        foregroundColor: foreground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: foreground),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -296,7 +325,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
@@ -322,10 +351,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SemiBoldTextView(text: 'Local Profile', fontSize: 15),
                         const SizedBox(height: 4),
                         SubRegularText(
-                          text: 'Member ID: ${widget.user.id}',
+                          text: 'Member ID: ${_currentUser.id}',
                           fontSize: 13,
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            const SemiBoldTextView(text: 'Preferences', fontSize: 18),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SemiBoldTextView(text: 'Theme Mode', fontSize: 15),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ThemeModeChip(
+                        label: 'System',
+                        icon: Icons.brightness_auto_outlined,
+                        isSelected: appSettings.themeMode == ThemeMode.system,
+                        onTap: () {
+                          context.read<SettingsCubit>().setThemeMode(
+                            ThemeMode.system,
+                          );
+                        },
+                      ),
+                      _ThemeModeChip(
+                        label: 'Light',
+                        icon: Icons.light_mode_outlined,
+                        isSelected: appSettings.themeMode == ThemeMode.light,
+                        onTap: () {
+                          context.read<SettingsCubit>().setThemeMode(
+                            ThemeMode.light,
+                          );
+                        },
+                      ),
+                      _ThemeModeChip(
+                        label: 'Dark',
+                        icon: Icons.dark_mode_outlined,
+                        isSelected: appSettings.themeMode == ThemeMode.dark,
+                        onTap: () {
+                          context.read<SettingsCubit>().setThemeMode(
+                            ThemeMode.dark,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _SettingsSwitchTile(
+                    title: 'Service alerts',
+                    subtitle:
+                        'Keep operational notifications active for low stock and new service requests.',
+                    value: appSettings.notificationsEnabled,
+                    icon: Icons.notifications_active_outlined,
+                    onChanged: (value) {
+                      context.read<SettingsCubit>().setNotificationsEnabled(
+                        value,
+                      );
+                    },
+                  ),
+                  const Divider(height: 24),
+                  _SettingsSwitchTile(
+                    title: 'Auto backup reminder',
+                    subtitle:
+                        'Keep backup-first actions enabled when you clear business data.',
+                    value: appSettings.autoBackupEnabled,
+                    icon: Icons.backup_outlined,
+                    onChanged: (value) {
+                      context.read<SettingsCubit>().setAutoBackupEnabled(value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _exportBackup,
+                      icon: const Icon(Icons.ios_share_outlined),
+                      label: const Text('Export Backup'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        foregroundColor: const Color(0xFF007FFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -365,7 +489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
@@ -396,7 +520,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
@@ -511,7 +635,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                backgroundColor: Colors.white,
+                backgroundColor: cardColor,
               ),
             ),
           ],
@@ -603,7 +727,7 @@ class _ProfileStatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -631,6 +755,94 @@ class _ProfileStatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThemeModeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeModeChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+      selectedColor: const Color(0xFFDBEAFE),
+      side: BorderSide(
+        color: isSelected ? const Color(0xFF007FFF) : const Color(0xFFE2E8F0),
+      ),
+      backgroundColor: Theme.of(context).cardColor,
+      labelStyle: TextStyle(
+        color: isSelected ? const Color(0xFF007FFF) : const Color(0xFF475569),
+        fontWeight: FontWeight.w700,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    );
+  }
+}
+
+class _SettingsSwitchTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool value;
+  final IconData icon;
+  final ValueChanged<bool> onChanged;
+
+  const _SettingsSwitchTile({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.icon,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFF007FFF).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: const Color(0xFF007FFF), size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SemiBoldTextView(text: title, fontSize: 15),
+              const SizedBox(height: 4),
+              SubRegularText(text: subtitle, fontSize: 13),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
     );
   }
 }

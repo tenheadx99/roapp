@@ -11,6 +11,8 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class AuthStarted extends AuthEvent {}
+
 class LoginRequested extends AuthEvent {
   final String email;
   final String password;
@@ -71,9 +73,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({AuthRepository? repository})
     : repository = repository ?? AuthRepository(),
       super(AuthInitial()) {
+    on<AuthStarted>(_onAuthStarted);
     on<LoginRequested>(_onLoginRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CurrentUserUpdated>(_onCurrentUserUpdated);
+  }
+
+  void _onAuthStarted(AuthStarted event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      await repository.ensureDefaultUser();
+      final user = await repository.getPersistedUser();
+      if (user == null) {
+        emit(AuthUnauthenticated());
+        return;
+      }
+      emit(AuthAuthenticated(user));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
   }
 
   void _onLoginRequested(LoginRequested event, Emitter<AuthState> emit) async {
@@ -105,7 +123,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  void _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) {
+  void _onLogoutRequested(
+    LogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    await repository.clearPersistedSession();
     emit(AuthUnauthenticated());
   }
 

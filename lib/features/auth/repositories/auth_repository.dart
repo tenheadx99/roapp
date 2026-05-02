@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 class AuthRepository {
   static const String defaultAdminEmail = 'admin@roservice.com';
   static const String defaultAdminPasskey = 'password123';
+  static const String _currentUserSettingKey = 'current_user_id';
 
   final dbHelper = DatabaseHelper.instance;
   final uuid = const Uuid();
@@ -64,7 +65,9 @@ class AuthRepository {
     );
 
     if (maps.isNotEmpty) {
-      return User.fromMap(maps.first);
+      final user = User.fromMap(maps.first);
+      await persistCurrentUser(user.id);
+      return user;
     }
     return null;
   }
@@ -144,5 +147,44 @@ class AuthRepository {
       'phone': '+91 9876543210',
       'role': 'Operations Admin',
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> persistCurrentUser(String userId) async {
+    final db = await dbHelper.database;
+    await db.insert('app_settings', {
+      'key': _currentUserSettingKey,
+      'value': userId,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> clearPersistedSession() async {
+    final db = await dbHelper.database;
+    await db.delete(
+      'app_settings',
+      where: 'key = ?',
+      whereArgs: [_currentUserSettingKey],
+    );
+  }
+
+  Future<User?> getPersistedUser() async {
+    final db = await dbHelper.database;
+    final sessionRows = await db.query(
+      'app_settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [_currentUserSettingKey],
+      limit: 1,
+    );
+
+    if (sessionRows.isEmpty) {
+      return null;
+    }
+
+    final userId = sessionRows.first['value'] as String?;
+    if ((userId ?? '').trim().isEmpty) {
+      return null;
+    }
+
+    return getUserById(userId!);
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
+import '../../settings/repositories/settings_repository.dart';
 
 // --- Events ---
 abstract class NotificationsEvent extends Equatable {
@@ -90,14 +91,17 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final InventoryRepository inventoryRepository;
   final DispatchRepository dispatchRepository;
   final CustomerRepository customerRepository;
+  final SettingsRepository settingsRepository;
 
   NotificationsBloc({
     InventoryRepository? inventoryRepository,
     DispatchRepository? dispatchRepository,
     CustomerRepository? customerRepository,
+    SettingsRepository? settingsRepository,
   }) : inventoryRepository = inventoryRepository ?? InventoryRepository(),
        dispatchRepository = dispatchRepository ?? DispatchRepository(),
        customerRepository = customerRepository ?? CustomerRepository(),
+       settingsRepository = settingsRepository ?? SettingsRepository(),
        super(NotificationsInitial()) {
     on<LoadNotifications>(_onLoadNotifications);
     on<FilterNotifications>(_onFilterNotifications);
@@ -110,6 +114,45 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   ) async {
     emit(NotificationsLoading());
     try {
+      final settings = await settingsRepository.loadSettings();
+      if (!settings.notificationsEnabled) {
+        emit(
+          const NotificationsLoaded(
+            allNotifications: [
+              {
+                'id': 'notifications-disabled',
+                'type': 'normal',
+                'category': 'Service',
+                'title': 'Notifications Paused',
+                'time': 'Now',
+                'content':
+                    'Service alerts are currently turned off from your profile preferences.',
+                'isRead': true,
+                'icon': 'alert',
+                'actionLabel': 'Open Dashboard',
+                'actionRoute': 'dashboard',
+              },
+            ],
+            filteredNotifications: [
+              {
+                'id': 'notifications-disabled',
+                'type': 'normal',
+                'category': 'Service',
+                'title': 'Notifications Paused',
+                'time': 'Now',
+                'content':
+                    'Service alerts are currently turned off from your profile preferences.',
+                'isRead': true,
+                'icon': 'alert',
+                'actionLabel': 'Open Dashboard',
+                'actionRoute': 'dashboard',
+              },
+            ],
+          ),
+        );
+        return;
+      }
+
       final inventory = await inventoryRepository.getInventory();
       final requests = await dispatchRepository.getServiceRequests();
       final customers = await customerRepository.getCustomers();

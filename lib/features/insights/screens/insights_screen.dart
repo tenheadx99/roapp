@@ -21,21 +21,27 @@ class _InsightsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Insights',
           style: TextStyle(
-            color: Colors.black,
+            color: foreground,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor:
+            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+        foregroundColor: foreground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: foreground),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -52,11 +58,11 @@ class _InsightsView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTimeRangeFilter(context, state.activeTimeRange),
-                  _buildStatsCards(state),
-                  _buildSalesTrends(state),
-                  _buildServiceLoad(state),
-                  _buildInventoryUsage(state),
-                  _buildCriticalAlerts(),
+                  _buildStatsCards(context, state),
+                  _buildSalesTrends(context, state),
+                  _buildServiceLoad(context, state),
+                  _buildInventoryUsage(context, state),
+                  _buildCriticalAlerts(context),
                 ],
               ),
             );
@@ -68,6 +74,8 @@ class _InsightsView extends StatelessWidget {
   }
 
   Widget _buildTimeRangeFilter(BuildContext context, String activeRange) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final ranges = ['Today', 'This Week', 'This Month', 'Custom'];
 
     return SingleChildScrollView(
@@ -84,15 +92,21 @@ class _InsightsView extends StatelessWidget {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF007FFF) : Colors.white,
+                color: isActive
+                    ? const Color(0xFF007FFF)
+                    : (isDark ? theme.cardColor : Colors.white),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive ? Colors.transparent : Colors.grey.shade200,
+                  color: isActive
+                      ? Colors.transparent
+                      : (isDark
+                            ? const Color(0xFF1F2937)
+                            : Colors.grey.shade200),
                 ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 4,
                         ),
                       ]
@@ -104,7 +118,11 @@ class _InsightsView extends StatelessWidget {
                     Icon(
                       Icons.calendar_today,
                       size: 14,
-                      color: isActive ? Colors.white : const Color(0xFF64748B),
+                      color: isActive
+                          ? Colors.white
+                          : (isDark
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF64748B)),
                     ),
                     const SizedBox(width: 4),
                   ],
@@ -113,7 +131,11 @@ class _InsightsView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isActive ? Colors.white : const Color(0xFF64748B),
+                      color: isActive
+                          ? Colors.white
+                          : (isDark
+                                ? const Color(0xFFCBD5E1)
+                                : const Color(0xFF64748B)),
                     ),
                   ),
                 ],
@@ -125,7 +147,16 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsCards(InsightsLoaded state) {
+  Widget _buildStatsCards(BuildContext context, InsightsLoaded state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? theme.cardColor : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF1F2937)
+        : Colors.grey.shade100;
+    final titleColor = isDark
+        ? const Color(0xFFCBD5E1)
+        : const Color(0xFF64748B);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -134,12 +165,12 @@ class _InsightsView extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade100),
+                border: Border.all(color: borderColor),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 4,
                   ),
                 ],
@@ -147,13 +178,13 @@ class _InsightsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'REVENUE',
                         style: TextStyle(
-                          color: Color(0xFF64748B),
+                          color: titleColor,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
@@ -188,12 +219,12 @@ class _InsightsView extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade100),
+                border: Border.all(color: borderColor),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
+                    color: Colors.black.withValues(alpha: 0.02),
                     blurRadius: 4,
                   ),
                 ],
@@ -201,13 +232,13 @@ class _InsightsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'AVG TAT',
                         style: TextStyle(
-                          color: Color(0xFF64748B),
+                          color: titleColor,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
@@ -242,7 +273,14 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildSalesTrends(InsightsLoaded state) {
+  Widget _buildSalesTrends(BuildContext context, InsightsLoaded state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? theme.cardColor : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF1F2937)
+        : Colors.grey.shade100;
+    final subtle = isDark ? const Color(0xFF94A3B8) : Colors.grey.shade500;
     final spots = <BarChartGroupData>[];
     int i = 0;
     state.salesTrends.forEach((key, value) {
@@ -254,7 +292,7 @@ class _InsightsView extends StatelessWidget {
               toY: value,
               color: key == 'Fri'
                   ? const Color(0xFF007FFF)
-                  : const Color(0xFF007FFF).withOpacity(0.25),
+                  : const Color(0xFF007FFF).withValues(alpha: 0.25),
               width: 24,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
@@ -272,12 +310,16 @@ class _InsightsView extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: borderColor),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+          ),
         ],
       ),
       child: Column(
@@ -292,55 +334,61 @@ class _InsightsView extends StatelessWidget {
                   const SemiBoldTextView(text: 'Sales Trends', fontSize: 18),
                   Text(
                     'Revenue growth over the last 7 days',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 12, color: subtle),
                   ),
                 ],
               ),
-              Icon(Icons.info_outline, color: Colors.grey.shade400, size: 18),
+              Icon(Icons.info_outline, color: subtle, size: 18),
             ],
           ),
           const SizedBox(height: 24),
           SizedBox(
-            height: 160,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 120,
-                barTouchData: BarTouchData(enabled: false),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            days[value.toInt()],
-                            style: const TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
+            height: 188,
+            child: ClipRect(
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 120,
+                  barTouchData: BarTouchData(enabled: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= days.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              days[index],
+                              style: TextStyle(
+                                color: subtle,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                      reservedSize: 28,
+                          );
+                        },
+                        reservedSize: 28,
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  gridData: FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  barGroups: spots,
                 ),
-                gridData: FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: spots,
               ),
             ),
           ),
@@ -349,16 +397,23 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildServiceLoad(InsightsLoaded state) {
+  Widget _buildServiceLoad(BuildContext context, InsightsLoaded state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade100,
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+          ),
         ],
       ),
       child: Column(
@@ -404,9 +459,9 @@ class _InsightsView extends StatelessWidget {
             if (tech['color'] == '#007fff') {
               barColor = const Color(0xFF007FFF);
             } else if (tech['color'] == '#007fff99')
-              barColor = const Color(0xFF007FFF).withOpacity(0.6);
+              barColor = const Color(0xFF007FFF).withValues(alpha: 0.6);
             else
-              barColor = const Color(0xFF007FFF).withOpacity(0.3);
+              barColor = const Color(0xFF007FFF).withValues(alpha: 0.3);
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
@@ -450,16 +505,23 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildInventoryUsage(InsightsLoaded state) {
+  Widget _buildInventoryUsage(BuildContext context, InsightsLoaded state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? theme.cardColor : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade100,
+        ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+          ),
         ],
       ),
       child: Column(
@@ -483,7 +545,7 @@ class _InsightsView extends StatelessWidget {
                           if (entry['color'] == '#007fff') {
                             color = const Color(0xFF007FFF);
                           } else if (entry['color'] == '#007fff66')
-                            color = const Color(0xFF007FFF).withOpacity(0.6);
+                            color = const Color(0xFF007FFF).withValues(alpha: 0.6);
                           else
                             color = const Color(0xFFF1F5F9);
 
@@ -529,7 +591,7 @@ class _InsightsView extends StatelessWidget {
                     if (entry['color'] == '#007fff') {
                       color = const Color(0xFF007FFF);
                     } else if (entry['color'] == '#007fff66')
-                      color = const Color(0xFF007FFF).withOpacity(0.6);
+                      color = const Color(0xFF007FFF).withValues(alpha: 0.6);
                     else
                       color = const Color(0xFFF1F5F9);
 
@@ -568,7 +630,9 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildCriticalAlerts() {
+  Widget _buildCriticalAlerts(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -638,10 +702,10 @@ class _InsightsView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF007FFF).withOpacity(0.05),
+              color: const Color(0xFF007FFF).withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF007FFF).withOpacity(0.1),
+                color: const Color(0xFF007FFF).withValues(alpha: 0.1),
               ),
             ),
             child: Row(
@@ -649,7 +713,7 @@ class _InsightsView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF007FFF).withOpacity(0.1),
+                    color: const Color(0xFF007FFF).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -659,26 +723,37 @@ class _InsightsView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'SLA Breach Risk',
                         style: TextStyle(
-                          color: Colors.black87,
+                          color: isDark
+                              ? theme.colorScheme.onSurface
+                              : Colors.black87,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         '3 services in Downtown are pending > 24hrs.',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+                Icon(
+                  Icons.chevron_right,
+                  color: isDark ? const Color(0xFF94A3B8) : Colors.grey,
+                  size: 18,
+                ),
               ],
             ),
           ),

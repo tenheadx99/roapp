@@ -14,6 +14,7 @@ import '../../dispatch/screens/dispatch_hub_screen.dart';
 import '../../insights/screens/insights_screen.dart';
 import '../../inventory/screens/inventory_screen.dart';
 import '../../notifications/screens/notifications_screen.dart';
+import '../../settings/bloc/settings_cubit.dart';
 import '../../supplier/screens/supplier_directory_screen.dart';
 import '../../technician/screens/technicians_screen.dart';
 import '../bloc/dashboard_bloc.dart';
@@ -26,10 +27,13 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground =
+        theme.appBarTheme.foregroundColor ?? theme.colorScheme.onSurface;
     return BlocProvider(
       create: (_) => DashboardBloc()..add(DashboardDataRequested()),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
           title: BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
@@ -42,8 +46,8 @@ class DashboardScreen extends StatelessWidget {
                     user == null
                         ? AppStrings.businessOverview
                         : 'Welcome, ${user.displayName.split(' ').first}',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: foreground,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -60,20 +64,38 @@ class DashboardScreen extends StatelessWidget {
               );
             },
           ),
-          backgroundColor: Colors.white,
+          backgroundColor:
+              theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
+          foregroundColor: foreground,
           elevation: 0,
           actions: [
             IconButton(
               icon: const Icon(Icons.download_rounded, color: Color(0xFF007FFF)),
               tooltip: 'Download Database',
-              onPressed: () => DbExporter.exportDatabase(),
+              onPressed: () async {
+                try {
+                  final message = await DbExporter.exportDatabase();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(message)));
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              },
             ),
             Builder(
               builder: (buttonContext) => IconButton(
                 icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
                 tooltip: 'Clear All Data',
                 onPressed: () {
-                  bool shouldBackup = true;
+                  bool shouldBackup = buttonContext
+                      .read<SettingsCubit>()
+                      .state
+                      .autoBackupEnabled;
                   final passwordController = TextEditingController();
 
                   showDialog(
@@ -121,7 +143,21 @@ class DashboardScreen extends StatelessWidget {
                               if (passwordController.text ==
                                   AuthRepository.defaultAdminPasskey) {
                                 if (shouldBackup) {
-                                  await DbExporter.exportDatabase();
+                                  try {
+                                    final message = await DbExporter.exportDatabase();
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                        SnackBar(content: Text(message)),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (dialogContext.mounted) {
+                                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                        SnackBar(content: Text(e.toString())),
+                                      );
+                                    }
+                                    return;
+                                  }
                                 }
                                 if (buttonContext.mounted) {
                                   buttonContext.read<DashboardBloc>().add(DashboardDataClearRequested());
@@ -145,7 +181,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.notifications_none, color: Colors.black),
+              icon: Icon(Icons.notifications_none, color: foreground),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -282,7 +318,7 @@ class _DesktopDashboardView extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: const Color(0xFFE2E8F0)),
                             ),
@@ -292,7 +328,7 @@ class _DesktopDashboardView extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: const Color(0xFFE2E8F0)),
                             ),
@@ -310,7 +346,7 @@ class _DesktopDashboardView extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
@@ -479,8 +515,8 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
         icon: Icons.inventory_2_outlined,
         iconBgColor: Colors.blue.shade50,
         iconColor: Colors.blue.shade600,
-        trend: '+5%',
-        trendIsUp: true,
+        badgeLabel: stats['totalInventoryBadge'] as String,
+        badgeTone: stats['totalInventoryBadgeTone'] as String,
       ),
       _StatCard(
         title: AppStrings.pendingService,
@@ -488,8 +524,9 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
         icon: Icons.build_outlined,
         iconBgColor: const Color(0xFF007FFF).withValues(alpha: 0.1),
         iconColor: const Color(0xFF007FFF),
-        trend: '+2%',
-        trendIsUp: true,
+        badgeLabel:
+            '${stats['underwayJobs']} underway • ${stats['pendingServiceBadge']}',
+        badgeTone: stats['pendingServiceBadgeTone'] as String,
       ),
       _StatCard(
         title: AppStrings.totalCustomers,
@@ -497,8 +534,8 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
         icon: Icons.group_outlined,
         iconBgColor: Colors.grey.shade100,
         iconColor: Colors.grey.shade600,
-        trend: '-1%',
-        trendIsUp: false,
+        badgeLabel: stats['totalCustomersBadge'] as String,
+        badgeTone: stats['totalCustomersBadgeTone'] as String,
       ),
       _StatCard(
         title: AppStrings.lowStock,
@@ -506,8 +543,8 @@ Widget _buildStatsGrid(Map<String, dynamic> stats, {required bool isDesktop}) {
         icon: Icons.warning_amber_rounded,
         iconBgColor: Colors.red.shade50,
         iconColor: Colors.red.shade600,
-        trend: 'Alert',
-        trendIsUp: false,
+        badgeLabel: stats['lowStockBadge'] as String,
+        badgeTone: stats['lowStockBadgeTone'] as String,
         isAlert: true,
       ),
     ],
@@ -828,7 +865,7 @@ Widget _buildRecentActivity(
 void _showQuickCreateSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: Theme.of(context).cardColor,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -917,7 +954,7 @@ class _QuickActionBtn extends StatelessWidget {
         width: width,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
@@ -1011,8 +1048,8 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconBgColor;
   final Color iconColor;
-  final String trend;
-  final bool trendIsUp;
+  final String badgeLabel;
+  final String badgeTone;
   final bool isAlert;
 
   const _StatCard({
@@ -1021,17 +1058,18 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.iconBgColor,
     required this.iconColor,
-    required this.trend,
-    required this.trendIsUp,
+    required this.badgeLabel,
+    required this.badgeTone,
     this.isAlert = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final badgeColors = _badgeColors(badgeTone, isAlert);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
@@ -1060,37 +1098,18 @@ class _StatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: isAlert
-                      ? Colors.red.shade50
-                      : trendIsUp
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
+                  color: badgeColors.$1,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Row(
-                  children: [
-                    if (!isAlert)
-                      Icon(
-                        trendIsUp ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 10,
-                        color: trendIsUp
-                            ? Colors.green.shade600
-                            : Colors.red.shade600,
-                      ),
-                    const SizedBox(width: 2),
-                    Text(
-                      trend,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: isAlert
-                            ? Colors.red.shade600
-                            : trendIsUp
-                            ? Colors.green.shade600
-                            : Colors.red.shade600,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  badgeLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: badgeColors.$2,
+                  ),
                 ),
               ),
             ],
@@ -1122,5 +1141,15 @@ class _StatCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  (Color, Color) _badgeColors(String tone, bool isAlertCard) {
+    if (isAlertCard || tone == 'negative') {
+      return (Colors.red.shade50, Colors.red.shade700);
+    }
+    if (tone == 'positive') {
+      return (Colors.green.shade50, Colors.green.shade700);
+    }
+    return (Colors.blueGrey.shade50, Colors.blueGrey.shade700);
   }
 }

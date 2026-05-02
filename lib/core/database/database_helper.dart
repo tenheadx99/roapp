@@ -4,11 +4,10 @@ import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
-import 'package:roapp/core/database/dummy_data.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 4;
+  static const int dbVersion = 6;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -61,6 +60,13 @@ CREATE TABLE users (
   name $textNullType,
   phone $textNullType,
   role $textNullType
+)
+''');
+
+    await db.execute('''
+CREATE TABLE app_settings (
+  key $idType,
+  value $textType
 )
 ''');
 
@@ -154,7 +160,6 @@ CREATE TABLE service_history (
 )
 ''');
 
-    await DummyData.seed(db);
     await _ensureDefaultAdmin(db);
   }
 
@@ -215,12 +220,30 @@ CREATE TABLE product_categories (
       await db.execute('ALTER TABLE users ADD COLUMN role TEXT');
     }
 
+    if (oldVersion < 5) {
+      await db.execute('''
+CREATE TABLE app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+)
+''');
+    }
+
+    if (oldVersion < 6) {
+      await db.delete('customers');
+      await db.delete('inventory');
+      await db.delete('service_requests');
+      await db.delete('suppliers');
+      await db.delete('technicians');
+      await db.delete('service_history');
+      await db.delete('product_categories');
+    }
+
     await _ensureDefaultAdmin(db);
   }
 
   Future<void> seedData() async {
     final db = await database;
-    await DummyData.seed(db);
     await _ensureDefaultAdmin(db);
   }
 
@@ -264,9 +287,15 @@ CREATE TABLE product_categories (
     await db.transaction((txn) async {
       if (includeUsers) {
         await txn.delete('users');
+        await txn.delete(
+          'app_settings',
+          where: 'key = ?',
+          whereArgs: ['current_user_id'],
+        );
       }
       await txn.delete('customers');
       await txn.delete('inventory');
+      await txn.delete('product_categories');
       await txn.delete('service_requests');
       await txn.delete('suppliers');
       await txn.delete('technicians');

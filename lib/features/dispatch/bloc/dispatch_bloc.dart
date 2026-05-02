@@ -22,6 +22,15 @@ class FilterDispatchRequests extends DispatchEvent {
   List<Object?> get props => [statusTab];
 }
 
+class SelectDispatchDate extends DispatchEvent {
+  final DateTime? selectedDate;
+
+  const SelectDispatchDate(this.selectedDate);
+
+  @override
+  List<Object?> get props => [selectedDate];
+}
+
 class AddServiceRequest extends DispatchEvent {
   final ServiceRequest request;
   const AddServiceRequest(this.request);
@@ -59,25 +68,37 @@ class DispatchLoaded extends DispatchState {
   final List<ServiceRequest> allRequests;
   final List<ServiceRequest> filteredRequests;
   final String activeTab;
+  final DateTime? selectedDate;
 
   const DispatchLoaded({
     required this.allRequests,
     required this.filteredRequests,
     this.activeTab = 'New',
+    this.selectedDate,
   });
 
   @override
-  List<Object?> get props => [allRequests, filteredRequests, activeTab];
+  List<Object?> get props => [
+    allRequests,
+    filteredRequests,
+    activeTab,
+    selectedDate,
+  ];
 
   DispatchLoaded copyWith({
     List<ServiceRequest>? allRequests,
     List<ServiceRequest>? filteredRequests,
     String? activeTab,
+    DateTime? selectedDate,
+    bool clearSelectedDate = false,
   }) {
     return DispatchLoaded(
       allRequests: allRequests ?? this.allRequests,
       filteredRequests: filteredRequests ?? this.filteredRequests,
       activeTab: activeTab ?? this.activeTab,
+      selectedDate: clearSelectedDate
+          ? null
+          : (selectedDate ?? this.selectedDate),
     );
   }
 }
@@ -100,6 +121,7 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
       super(DispatchInitial()) {
     on<LoadDispatchRequests>(_onLoadRequests);
     on<FilterDispatchRequests>(_onFilterRequests);
+    on<SelectDispatchDate>(_onSelectDispatchDate);
     on<AddServiceRequest>(_onAddServiceRequest);
     on<UpdateServiceRequest>(_onUpdateServiceRequest);
     on<DeleteServiceRequest>(_onDeleteServiceRequest);
@@ -115,7 +137,7 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
       emit(
         DispatchLoaded(
           allRequests: requests,
-          filteredRequests: _filterByTab(requests, 'New'),
+          filteredRequests: _applyFilters(requests, 'New', null),
           activeTab: 'New',
         ),
       );
@@ -130,7 +152,11 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
   ) {
     if (state is DispatchLoaded) {
       final currentState = state as DispatchLoaded;
-      final filtered = _filterByTab(currentState.allRequests, event.statusTab);
+      final filtered = _applyFilters(
+        currentState.allRequests,
+        event.statusTab,
+        currentState.selectedDate,
+      );
 
       emit(
         currentState.copyWith(
@@ -139,6 +165,25 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
         ),
       );
     }
+  }
+
+  void _onSelectDispatchDate(
+    SelectDispatchDate event,
+    Emitter<DispatchState> emit,
+  ) {
+    if (state is! DispatchLoaded) return;
+    final currentState = state as DispatchLoaded;
+    emit(
+      currentState.copyWith(
+        selectedDate: event.selectedDate,
+        clearSelectedDate: event.selectedDate == null,
+        filteredRequests: _applyFilters(
+          currentState.allRequests,
+          currentState.activeTab,
+          event.selectedDate,
+        ),
+      ),
+    );
   }
 
   List<ServiceRequest> _filterByTab(List<ServiceRequest> requests, String tab) {
@@ -153,16 +198,40 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
     }
   }
 
+  List<ServiceRequest> _applyFilters(
+    List<ServiceRequest> requests,
+    String tab,
+    DateTime? selectedDate,
+  ) {
+    final byTab = _filterByTab(requests, tab);
+    if (selectedDate == null) {
+      return byTab;
+    }
+    return byTab.where((request) => _matchesDate(request, selectedDate)).toList();
+  }
+
+  bool _matchesDate(ServiceRequest request, DateTime selectedDate) {
+    final scheduled = DateTime.tryParse(request.scheduledFor ?? '');
+    if (scheduled == null) return false;
+    return scheduled.year == selectedDate.year &&
+        scheduled.month == selectedDate.month &&
+        scheduled.day == selectedDate.day;
+  }
+
   Future<void> _reloadForActiveTab(Emitter<DispatchState> emit) async {
     final activeTab = state is DispatchLoaded
         ? (state as DispatchLoaded).activeTab
         : 'New';
+    final selectedDate = state is DispatchLoaded
+        ? (state as DispatchLoaded).selectedDate
+        : null;
     final requests = await repository.getServiceRequests();
     emit(
       DispatchLoaded(
         allRequests: requests,
-        filteredRequests: _filterByTab(requests, activeTab),
+        filteredRequests: _applyFilters(requests, activeTab, selectedDate),
         activeTab: activeTab,
+        selectedDate: selectedDate,
       ),
     );
   }
