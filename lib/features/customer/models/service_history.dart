@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class ServiceHistory extends Equatable {
   final String id;
   final String customerId;
+  final String? serviceRequestId;
   final String date;
   final String type;
   final String technicianName;
@@ -13,6 +14,7 @@ class ServiceHistory extends Equatable {
   const ServiceHistory({
     required this.id,
     required this.customerId,
+    this.serviceRequestId,
     required this.date,
     required this.type,
     required this.technicianName,
@@ -25,6 +27,7 @@ class ServiceHistory extends Equatable {
     return ServiceHistory(
       id: map['id'] as String,
       customerId: map['customerId'] as String,
+      serviceRequestId: map['serviceRequestId'] as String?,
       date: map['date'] as String,
       type: map['type'] as String,
       technicianName: map['technicianName'] as String,
@@ -38,6 +41,7 @@ class ServiceHistory extends Equatable {
     return {
       'id': id,
       'customerId': customerId,
+      'serviceRequestId': serviceRequestId,
       'date': date,
       'type': type,
       'technicianName': technicianName,
@@ -51,6 +55,7 @@ class ServiceHistory extends Equatable {
   List<Object?> get props => [
     id,
     customerId,
+    serviceRequestId,
     date,
     type,
     technicianName,

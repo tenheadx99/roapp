@@ -32,18 +32,26 @@ class CustomButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(borderRadius),
           ),
           elevation: 4, // shadow-lg shadow-[#007fff]/20
-          shadowColor: (color ?? const Color(0xFF007FFF)).withValues(alpha: 0.5),
+          shadowColor: (color ?? const Color(0xFF007FFF)).withValues(
+            alpha: 0.5,
+          ),
         ),
         onPressed: onPressed,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             if (icon != null) ...[const SizedBox(width: 8), icon!],

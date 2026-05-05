@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
@@ -322,7 +323,9 @@ void _showAddCategoryDialog(BuildContext context) {
               return;
             }
 
-            context.read<InventoryBloc>().add(AddInventoryCategory(categoryName));
+            context.read<InventoryBloc>().add(
+              AddInventoryCategory(categoryName),
+            );
             Navigator.pop(dialogContext);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Category "$categoryName" created')),
@@ -434,13 +437,14 @@ class _InventoryCard extends StatelessWidget {
                   children: [
                     SemiBoldTextView(text: item.name, fontSize: 16),
                     SubRegularText(
-                      text: 'MRP: \$${item.mrp.toStringAsFixed(2)} | Supplier: ${item.supplier}',
+                      text:
+                          'MRP: ${formatRupee(item.mrp, decimalDigits: 2)} | Supplier: ${item.supplier}',
                     ),
                   ],
                 ),
               ),
               Text(
-                '\$${item.price.toStringAsFixed(2)}',
+                formatRupee(item.price, decimalDigits: 2),
                 style: const TextStyle(
                   color: Color(0xFF007FFF),
                   fontSize: 16,

@@ -35,11 +35,7 @@ class DashboardLoaded extends DashboardState {
   final List<dynamic> activities;
   final List<dynamic> scheduledServices;
 
-  const DashboardLoaded(
-    this.stats,
-    this.activities,
-    this.scheduledServices,
-  );
+  const DashboardLoaded(this.stats, this.activities, this.scheduledServices);
 
   @override
   List<Object?> get props => [stats, activities, scheduledServices];
@@ -72,10 +68,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final inventoryRepo = InventoryRepository();
       final dispatchRepo = DispatchRepository();
 
+      final requests = await dispatchRepo.getServiceRequests();
       final customers = await customerRepo.getCustomers();
       final serviceHistory = await customerRepo.getAllServiceHistory();
       final inventoryItems = await inventoryRepo.getInventory();
-      final requests = await dispatchRepo.getServiceRequests();
 
       final totalCustomers = customers.length;
       final totalInventory = inventoryItems.fold<int>(
@@ -92,7 +88,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           .where((item) => item.stock > item.lowStockThreshold)
           .length;
       final underwayJobs = requests
-          .where((req) => req.status == 'assigned' || req.status == 'in_progress')
+          .where(
+            (req) => req.status == 'assigned' || req.status == 'in_progress',
+          )
           .length;
       final dueThisMonth = customers.where((customer) {
         final upcoming = _parseCustomerDate(customer.upcomingServiceDate);
@@ -122,14 +120,17 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         'totalCustomers': totalCustomers.toString(),
         'lowStock': lowStock.toString(),
         'totalInventoryBadge': '$healthyItems healthy items',
-        'totalInventoryBadgeTone': healthyItems >= lowStock ? 'positive' : 'neutral',
+        'totalInventoryBadgeTone': healthyItems >= lowStock
+            ? 'positive'
+            : 'neutral',
         'pendingServiceBadge': _buildDeltaBadge(
           completedThisWeek,
           completedLastWeek,
           suffix: 'vs last week',
         ),
-        'pendingServiceBadgeTone':
-            completedThisWeek >= completedLastWeek ? 'positive' : 'negative',
+        'pendingServiceBadgeTone': completedThisWeek >= completedLastWeek
+            ? 'positive'
+            : 'negative',
         'totalCustomersBadge': '$dueThisMonth due this month',
         'totalCustomersBadgeTone': dueThisMonth > 0 ? 'neutral' : 'positive',
         'lowStockBadge': lowStock == 0 ? 'All stocked' : '$lowStock attention',
@@ -137,11 +138,10 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         'underwayJobs': underwayJobs.toString(),
       };
 
-      var activities = requests
-          .toList()
-          ..sort(
-            (a, b) => _sortScheduleValue(b).compareTo(_sortScheduleValue(a)),
-          );
+      var activities = requests.toList()
+        ..sort(
+          (a, b) => _sortScheduleValue(b).compareTo(_sortScheduleValue(a)),
+        );
 
       final activityCards = activities
           .take(3)
@@ -162,36 +162,34 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
       if (activityCards.isEmpty) {
         emit(
-          DashboardLoaded(
-            stats,
-            const [
-              {
-                'id': 1,
-                'title': 'System Started',
-                'desc': 'No recent activity yet.',
-                'time': 'Just now',
-                'color': 'blue',
-              },
-            ],
-            const [],
-          ),
+          DashboardLoaded(stats, const [
+            {
+              'id': 1,
+              'title': 'System Started',
+              'desc': 'No recent activity yet.',
+              'time': 'Just now',
+              'color': 'blue',
+            },
+          ], const []),
         );
         return;
       }
 
       final scheduledServices = List<Map<String, dynamic>>.from(
-        requests.map((req) => {
-          'id': req.id,
-          'title': '${req.type} Request - ${req.address}',
-          'customerName': req.customerName,
-          'time': req.time,
-          'status': req.status,
-          'type': req.type,
-          'model': req.model,
-          'technicianName': req.technicianName,
-          'notes': req.notes,
-          'scheduledFor': req.scheduledFor,
-        }),
+        requests.map(
+          (req) => {
+            'id': req.id,
+            'title': '${req.type} Request - ${req.address}',
+            'customerName': req.customerName,
+            'time': req.time,
+            'status': req.status,
+            'type': req.type,
+            'model': req.model,
+            'technicianName': req.technicianName,
+            'notes': req.notes,
+            'scheduledFor': req.scheduledFor,
+          },
+        ),
       );
 
       scheduledServices.sort(
@@ -242,22 +240,20 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     final datePart = dateAndTime.first.trim();
     final timePart = dateAndTime.length > 1 ? dateAndTime.last.trim() : null;
 
-    final commaDate = RegExp(r'^([A-Za-z]{3}) (\d{1,2}), (\d{4})$').firstMatch(datePart);
+    final commaDate = RegExp(
+      r'^([A-Za-z]{3}) (\d{1,2}), (\d{4})$',
+    ).firstMatch(datePart);
     if (commaDate != null) {
       final month = months[commaDate.group(1)!];
       final day = int.parse(commaDate.group(2)!);
       final year = int.parse(commaDate.group(3)!);
       final time = _parseTime(timePart);
-      return DateTime(
-        year,
-        month!,
-        day,
-        time?.hour ?? 0,
-        time?.minute ?? 0,
-      );
+      return DateTime(year, month!, day, time?.hour ?? 0, time?.minute ?? 0);
     }
 
-    final shortDate = RegExp(r'^(\d{2}) ([A-Za-z]{3}) (\d{4})$').firstMatch(datePart);
+    final shortDate = RegExp(
+      r'^(\d{2}) ([A-Za-z]{3}) (\d{4})$',
+    ).firstMatch(datePart);
     if (shortDate != null) {
       return DateTime(
         int.parse(shortDate.group(3)!),
@@ -271,7 +267,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
   ({int hour, int minute})? _parseTime(String? value) {
     if ((value ?? '').trim().isEmpty) return null;
-    final match = RegExp(r'^(\d{1,2}):(\d{2}) (AM|PM)$').firstMatch(value!.trim());
+    final match = RegExp(
+      r'^(\d{1,2}):(\d{2}) (AM|PM)$',
+    ).firstMatch(value!.trim());
     if (match == null) return null;
     var hour = int.parse(match.group(1)!);
     final minute = int.parse(match.group(2)!);

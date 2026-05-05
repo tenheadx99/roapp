@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/utils/currency_formatter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../bloc/insights_bloc.dart';
@@ -194,7 +195,7 @@ class _InsightsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '\$${state.revenue.toInt().toString().replaceAll(RegExp(r'\B(?=(\d{3})+(?!\d))'), ',')}',
+                    formatRupee(state.revenue.toInt()),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,

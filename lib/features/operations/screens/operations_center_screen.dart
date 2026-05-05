@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/currency_formatter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import '../../customer/models/customer.dart';
@@ -1197,7 +1198,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                       '${invoice.invoiceNumber} • ${_customerName(invoice.customerId)}',
                                     ),
                                     subtitle: Text(
-                                      'Due ${_formatDate(DateTime.tryParse(invoice.dueDate) ?? DateTime.now())} • Balance ${invoice.balanceDue.toStringAsFixed(0)}',
+                                      'Due ${_formatDate(DateTime.tryParse(invoice.dueDate) ?? DateTime.now())} • Balance ${formatRupee(invoice.balanceDue)}',
                                     ),
                                     trailing: Text(
                                       invoice.status.toUpperCase(),
@@ -1433,7 +1434,7 @@ class _OverviewGrid extends StatelessWidget {
     final items = [
       (
         'Outstanding',
-        '${(overview['outstandingBalance'] ?? 0).toStringAsFixed(0)}',
+        formatRupee((overview['outstandingBalance'] ?? 0) as num),
       ),
       ('Overdue', '${overview['overdueInvoices'] ?? 0}'),
       ('Renewals', '${overview['expiringContracts'] ?? 0}'),

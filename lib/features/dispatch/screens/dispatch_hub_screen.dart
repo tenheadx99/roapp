@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -9,6 +11,7 @@ import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../../technician/models/technician.dart';
 import '../../technician/repositories/technician_repository.dart';
+import '../../operations/repositories/operations_repository.dart';
 import '../bloc/dispatch_bloc.dart';
 import '../models/service_request.dart';
 import 'add_service_request_bottom_sheet.dart';
@@ -33,6 +36,8 @@ class _DispatchHubView extends StatefulWidget {
 }
 
 class _DispatchHubViewState extends State<_DispatchHubView> {
+  final OperationsRepository _operationsRepository = OperationsRepository();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -489,6 +494,36 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                 ),
                 const SizedBox(height: 6),
               ],
+              if (req.inventoryItems.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: req.inventoryItems
+                      .take(3)
+                      .map(
+                        (item) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '${item.name} x${item.quantity}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   const Icon(
@@ -548,6 +583,18 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      if (req.inventoryItems.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            formatRupee(req.totalAmount, decimalDigits: 2),
+                            style: const TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       if (req.status == 'new')
                         SizedBox(
                           width: 100,
@@ -583,6 +630,17 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                         ),
                         child: const Text('Edit'),
                       ),
+                      if (req.status == 'completed')
+                        TextButton(
+                          onPressed: () => _downloadInvoice(context, req),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF0F766E),
+                            padding: const EdgeInsets.only(top: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Download Invoice'),
+                        ),
                     ],
                   ),
                 ],
@@ -672,10 +730,11 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
       builder: (_) {
         return _AssignTechnicianSheet(
           request: request,
-          onAssign: (techName, notes) {
+          onAssign: (technician, notes) {
             final updatedRequest = request.copyWith(
               status: 'assigned',
-              technicianName: techName,
+              technicianId: technician.id,
+              technicianName: technician.name,
               notes: notes.trim().isEmpty ? request.notes : notes.trim(),
             );
             dispatchBloc.add(UpdateServiceRequest(updatedRequest));
@@ -692,6 +751,31 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     context.read<DispatchBloc>().add(
       UpdateServiceRequest(request.copyWith(status: nextStatus)),
     );
+  }
+
+  Future<void> _downloadInvoice(
+    BuildContext context,
+    ServiceRequest request,
+  ) async {
+    try {
+      final path = await _operationsRepository.exportServiceInvoice(request);
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'Service Invoice - ${request.customerName}',
+        text: 'Service invoice for ${request.customerName}',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(content: Text('Invoice saved and ready to share: $path')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not generate invoice: $e')));
+    }
   }
 
   Color _statusChipBg(String status) {
@@ -831,7 +915,7 @@ class _DateChip extends StatelessWidget {
 
 class _AssignTechnicianSheet extends StatefulWidget {
   final ServiceRequest request;
-  final Function(String, String) onAssign;
+  final Function(Technician, String) onAssign;
 
   const _AssignTechnicianSheet({required this.request, required this.onAssign});
 
@@ -840,14 +924,13 @@ class _AssignTechnicianSheet extends StatefulWidget {
 }
 
 class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
-  String? _selectedTechnician;
+  Technician? _selectedTechnician;
   final TextEditingController _notesController = TextEditingController();
   final TechnicianRepository _technicianRepository = TechnicianRepository();
 
   @override
   void initState() {
     super.initState();
-    _selectedTechnician = widget.request.technicianName;
     _notesController.text = widget.request.notes ?? '';
   }
 
@@ -927,6 +1010,15 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
                 );
               }
 
+              _selectedTechnician ??= techs
+                  .where(
+                    (tech) =>
+                        tech.id == widget.request.technicianId ||
+                        tech.name == widget.request.technicianName,
+                  )
+                  .cast<Technician?>()
+                  .firstOrNull;
+
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -937,7 +1029,7 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     isExpanded: true,
-                    value: _selectedTechnician,
+                    value: _selectedTechnician?.id,
                     hint: const SubRegularText(
                       text: AppStrings.chooseTechnician,
                     ),
@@ -948,7 +1040,7 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
                     items: techs
                         .map(
                           (e) => DropdownMenuItem(
-                            value: e.name,
+                            value: e.id,
                             child: SubRegularText(
                               text: '${e.name} (${e.status})',
                               color: const Color(0xFF0F172A),
@@ -958,7 +1050,10 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
                         .toList(),
                     onChanged: (val) {
                       setState(() {
-                        _selectedTechnician = val;
+                        _selectedTechnician = techs
+                            .where((tech) => tech.id == val)
+                            .cast<Technician?>()
+                            .firstOrNull;
                       });
                     },
                   ),
@@ -992,5 +1087,16 @@ class _AssignTechnicianSheetState extends State<_AssignTechnicianSheet> {
         ],
       ),
     );
+  }
+}
+
+extension<T> on Iterable<T?> {
+  T? get firstOrNull {
+    for (final value in this) {
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
   }
 }

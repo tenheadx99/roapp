@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
-import '../../inventory/repositories/inventory_repository.dart';
 import '../../operations/repositories/operations_repository.dart';
 import '../../supplier/repositories/supplier_repository.dart';
 import '../../technician/repositories/technician_repository.dart';
@@ -148,23 +147,45 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
     emit(InsightsLoading());
     try {
       final techRepo = TechnicianRepository();
-      final invRepo = InventoryRepository();
       final customerRepo = CustomerRepository();
       final dispatchRepo = DispatchRepository();
       final operationsRepo = OperationsRepository();
       final supplierRepo = SupplierRepository();
 
       final technicians = await techRepo.getTechnicians();
-      final inventory = await invRepo.getInventory();
-      final serviceHistory = await customerRepo.getAllServiceHistory();
       final requests = await dispatchRepo.getServiceRequests();
+      final serviceHistory = await customerRepo.getAllServiceHistory();
       final invoices = await operationsRepo.getInvoices();
       final purchaseOrders = await operationsRepo.getPurchaseOrders();
       final suppliers = await supplierRepo.getSuppliers();
       final customers = await customerRepo.getCustomers();
 
-      var serviceLoad = technicians.map((t) {
-        return {'name': t.name, 'tasks': t.tasksToday, 'color': '#007fff'};
+      final historiesInRange = serviceHistory.where((entry) {
+        return _matchesRange(_parseHistoryDate(entry.date), activeRange);
+      }).toList();
+      final invoicesInRange = invoices.where((invoice) {
+        return _matchesRange(DateTime.tryParse(invoice.issueDate), activeRange);
+      }).toList();
+
+      final loadByTechnician = <String, int>{};
+      for (final technician in technicians) {
+        loadByTechnician[technician.name] = 0;
+      }
+
+      for (final request in requests) {
+        final technicianName = (request.technicianName ?? '').trim();
+        if (technicianName.isEmpty || request.status == 'completed') continue;
+        loadByTechnician[technicianName] =
+            (loadByTechnician[technicianName] ?? 0) + 1;
+      }
+
+      for (final entry in historiesInRange) {
+        loadByTechnician[entry.technicianName] =
+            (loadByTechnician[entry.technicianName] ?? 0) + 1;
+      }
+
+      var serviceLoad = loadByTechnician.entries.map((entry) {
+        return {'name': entry.key, 'tasks': entry.value, 'color': '#007fff'};
       }).toList();
 
       if (serviceLoad.isEmpty) {
@@ -173,42 +194,36 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         ];
       }
 
-      final Map<String, double> categoryStock = {};
-      int totalStock = 0;
-      for (var item in inventory) {
-        categoryStock[item.category] =
-            (categoryStock[item.category] ?? 0) + item.stock;
-        totalStock += item.stock;
+      final inventoryUsageCounts = <String, int>{};
+      var totalPartsUsed = 0;
+      for (final entry in historiesInRange) {
+        final parts = _parsePartsUsage(entry.partsReplaced);
+        for (final part in parts.entries) {
+          inventoryUsageCounts[part.key] =
+              (inventoryUsageCounts[part.key] ?? 0) + part.value;
+          totalPartsUsed += part.value;
+        }
       }
 
-      var inventoryUsage = categoryStock.entries.map((e) {
+      var inventoryUsage = inventoryUsageCounts.entries.map((e) {
         return {
           'name': e.key,
-          'value': totalStock > 0 ? (e.value / totalStock) * 100 : 0.0,
+          'value': totalPartsUsed > 0 ? (e.value / totalPartsUsed) * 100 : 0.0,
           'color': '#007fff',
         };
       }).toList();
 
       if (inventoryUsage.isEmpty) {
         inventoryUsage = [
-          {'name': 'No Elements', 'value': 100.0, 'color': '#f1f5f9'},
+          {'name': 'No Usage', 'value': 100.0, 'color': '#f1f5f9'},
         ];
       }
 
       final revenue =
-          serviceHistory.fold<double>(
+          historiesInRange.fold<double>(0, (sum, entry) => sum + entry.cost) +
+          invoicesInRange.fold<double>(
             0,
-            (sum, entry) =>
-                _matchesRange(_parseHistoryDate(entry.date), activeRange)
-                ? sum + entry.cost
-                : sum,
-          ) +
-          invoices.fold<double>(
-            0,
-            (sum, invoice) =>
-                _matchesRange(DateTime.tryParse(invoice.issueDate), activeRange)
-                ? sum + invoice.paidAmount
-                : sum,
+            (sum, invoice) => sum + invoice.paidAmount,
           );
       final openRequests = requests
           .where((request) => request.status != 'completed')
@@ -227,12 +242,19 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         'Sun': 0,
       };
 
-      for (final entry in serviceHistory) {
+      for (final entry in historiesInRange) {
         final date = _parseHistoryDate(entry.date);
-        if (date == null || !_matchesRange(date, activeRange)) continue;
+        if (date == null) continue;
         const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         final label = labels[date.weekday - 1];
         salesTrends[label] = (salesTrends[label] ?? 0) + entry.cost;
+      }
+      for (final invoice in invoicesInRange) {
+        final date = DateTime.tryParse(invoice.issueDate);
+        if (date == null) continue;
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        final label = labels[date.weekday - 1];
+        salesTrends[label] = (salesTrends[label] ?? 0) + invoice.paidAmount;
       }
 
       final revenueByTech = <String, double>{};
@@ -240,16 +262,15 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
       final repeatCustomers = <String, int>{};
       final monthlyVolume = <String, int>{};
 
-      for (final entry in serviceHistory) {
+      for (final entry in historiesInRange) {
         final date = _parseHistoryDate(entry.date);
         revenueByTech[entry.technicianName] =
             (revenueByTech[entry.technicianName] ?? 0) + entry.cost;
         repeatCustomers[entry.customerId] =
             (repeatCustomers[entry.customerId] ?? 0) + 1;
-        for (final rawPart in entry.partsReplaced.split(',')) {
-          final part = rawPart.trim();
-          if (part.isEmpty) continue;
-          topParts[part] = (topParts[part] ?? 0) + 1;
+        final parts = _parsePartsUsage(entry.partsReplaced);
+        for (final part in parts.entries) {
+          topParts[part.key] = (topParts[part.key] ?? 0) + part.value;
         }
         if (date != null) {
           final label = '${_monthLabel(date.month)} ${date.year}';
@@ -407,5 +428,21 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
       'Dec': 12,
     };
     return months[value];
+  }
+
+  Map<String, int> _parsePartsUsage(String value) {
+    final usage = <String, int>{};
+    for (final rawPart in value.split(',')) {
+      final part = rawPart.trim();
+      if (part.isEmpty || part.toLowerCase() == 'none') {
+        continue;
+      }
+      final match = RegExp(r'^(.*?)(?:\s*x\s*(\d+))?$').firstMatch(part);
+      final name = (match?.group(1) ?? part).trim();
+      final quantity = int.tryParse(match?.group(2) ?? '') ?? 1;
+      if (name.isEmpty) continue;
+      usage[name] = (usage[name] ?? 0) + quantity;
+    }
+    return usage;
   }
 }

@@ -7,7 +7,7 @@ import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 7;
+  static const int dbVersion = 9;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -115,6 +115,7 @@ CREATE TABLE product_categories (
     await db.execute('''
 CREATE TABLE service_requests (
   id $idType,
+  customerId $textNullType,
   customerName $textType,
   address $textType,
   type $textType,
@@ -122,8 +123,12 @@ CREATE TABLE service_requests (
   time $textType,
   status $textType,
   scheduledFor $textNullType,
+  completedAt $textNullType,
+  technicianId $textNullType,
   technicianName $textNullType,
-  notes $textNullType
+  notes $textNullType,
+  inventoryItems $textNullType,
+  totalAmount REAL NOT NULL DEFAULT 0
 )
 ''');
 
@@ -158,6 +163,7 @@ CREATE TABLE technicians (
 CREATE TABLE service_history (
   id $idType,
   customerId $textType,
+  serviceRequestId $textNullType,
   date $textType,
   type $textType,
   technicianName $textType,
@@ -436,6 +442,42 @@ CREATE TABLE IF NOT EXISTS service_attachments (
         db,
         7,
         'Added operations workflows, attachments, and migration audit tracking.',
+      );
+    }
+
+    if (oldVersion < 8) {
+      await db.execute(
+        'ALTER TABLE service_requests ADD COLUMN customerId TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE service_requests ADD COLUMN technicianId TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE service_requests ADD COLUMN inventoryItems TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE service_requests ADD COLUMN totalAmount REAL NOT NULL DEFAULT 0',
+      );
+
+      await _recordMigration(
+        db,
+        8,
+        'Linked service requests to customers and added priced inventory line items.',
+      );
+    }
+
+    if (oldVersion < 9) {
+      await db.execute(
+        'ALTER TABLE service_requests ADD COLUMN completedAt TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE service_history ADD COLUMN serviceRequestId TEXT',
+      );
+
+      await _recordMigration(
+        db,
+        9,
+        'Tracked service completion timestamps and linked service history to service requests.',
       );
     }
 

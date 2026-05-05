@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/header_text.dart';
 import '../../../widgets/semi_bold_text_view.dart';
@@ -637,7 +638,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                       ],
                                     ),
                                     Text(
-                                      '\$${item.cost.toStringAsFixed(2)}',
+                                      formatRupee(item.cost, decimalDigits: 2),
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -858,7 +859,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           ),
         ),
         child: CustomButton(
-          text: 'Schedule New Service',
+          text: 'Create Service',
           icon: const Icon(
             Icons.calendar_today_outlined,
             color: Colors.white,
@@ -872,6 +873,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               builder: (_) => BlocProvider.value(
                 value: scaffoldContext.read<DispatchBloc>(),
                 child: AddServiceRequestBottomSheet(
+                  initialCustomerId: widget.customer.id,
                   initialCustomerName: widget.customer.name,
                   initialAddress: widget.customer.area,
                   initialModel: widget.customer.model,
@@ -918,8 +920,9 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
   Widget _buildUpcomingList(BuildContext context) {
     return FutureBuilder(
-      future: DispatchRepository().getServiceRequestsByCustomerName(
-        widget.customer.name,
+      future: DispatchRepository().getServiceRequestsByCustomer(
+        customerId: widget.customer.id,
+        customerName: widget.customer.name,
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1004,12 +1007,37 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Scheduled for: \${req.time}',
+                                  req.scheduledFor == null
+                                      ? req.time
+                                      : 'Scheduled for: ${req.time}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF475569),
                                   ),
                                 ),
+                                if (req.inventoryItems.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${req.inventoryLineCount} part(s) • ${formatRupee(req.totalAmount, decimalDigits: 2)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF007FFF),
+                                    ),
+                                  ),
+                                ],
+                                if ((req.technicianName ?? '')
+                                    .trim()
+                                    .isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Assigned to ${req.technicianName}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
