@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../customer/models/customer.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
@@ -92,16 +93,19 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final DispatchRepository dispatchRepository;
   final CustomerRepository customerRepository;
   final SettingsRepository settingsRepository;
+  final DateTime Function() nowProvider;
 
   NotificationsBloc({
     InventoryRepository? inventoryRepository,
     DispatchRepository? dispatchRepository,
     CustomerRepository? customerRepository,
     SettingsRepository? settingsRepository,
+    DateTime Function()? nowProvider,
   }) : inventoryRepository = inventoryRepository ?? InventoryRepository(),
        dispatchRepository = dispatchRepository ?? DispatchRepository(),
        customerRepository = customerRepository ?? CustomerRepository(),
        settingsRepository = settingsRepository ?? SettingsRepository(),
+       nowProvider = nowProvider ?? DateTime.now,
        super(NotificationsInitial()) {
     on<LoadNotifications>(_onLoadNotifications);
     on<FilterNotifications>(_onFilterNotifications);
@@ -158,6 +162,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       final customers = await customerRepository.getCustomers();
 
       final notifications = <Map<String, dynamic>>[];
+      final now = nowProvider();
 
       final lowStockItems = inventory
           .where((item) => item.stock <= item.lowStockThreshold)
@@ -178,8 +183,21 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         });
       }
 
+      final customersWithReminder = <String>{};
+      for (final customer in customers) {
+        final reminder = _buildServiceReminderNotification(customer, now);
+        if (reminder == null) continue;
+
+        notifications.add(reminder);
+        customersWithReminder.add(customer.id);
+      }
+
       final unassignedDueCustomers = customers
-          .where((customer) => customer.status == 'Service Due')
+          .where(
+            (customer) =>
+                customer.status == 'Service Due' &&
+                !customersWithReminder.contains(customer.id),
+          )
           .take(3);
       for (final customer in unassignedDueCustomers) {
         notifications.add({
@@ -253,6 +271,131 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     } catch (e) {
       emit(NotificationsError(e.toString()));
     }
+  }
+
+  Map<String, dynamic>? _buildServiceReminderNotification(
+    Customer customer,
+    DateTime now,
+  ) {
+    final lastServiceDate = _parseFlexibleDate(customer.lastService);
+    if (lastServiceDate == null) {
+      return null;
+    }
+
+    final today = _stripTime(now);
+    final threeMonthDueDate = _stripTime(
+      lastServiceDate.add(const Duration(days: 90)),
+    );
+    final sixMonthDueDate = _stripTime(
+      lastServiceDate.add(const Duration(days: 180)),
+    );
+
+    if (!today.isBefore(sixMonthDueDate)) {
+      return {
+        'id': 'service-reminder-6-${customer.id}',
+        'type': 'urgent',
+        'category': 'Service',
+        'title': '6-Month Service Reminder',
+        'time': _formatDate(sixMonthDueDate),
+        'content':
+            '${customer.name} in ${customer.area} is due for a 6-month service follow-up. Last service was on ${customer.lastService}.',
+        'isRead': false,
+        'icon': 'alert',
+        'actionLabel': 'Open Dispatch',
+        'actionRoute': 'dispatch',
+      };
+    }
+
+    if (!today.isBefore(threeMonthDueDate)) {
+      return {
+        'id': 'service-reminder-3-${customer.id}',
+        'type': 'normal',
+        'category': 'Service',
+        'title': '3-Month Service Reminder',
+        'time': _formatDate(threeMonthDueDate),
+        'content':
+            '${customer.name} in ${customer.area} is due for the routine 3-month service follow-up. Last service was on ${customer.lastService}.',
+        'isRead': false,
+        'icon': 'alert',
+        'actionLabel': 'Open Dispatch',
+        'actionRoute': 'dispatch',
+      };
+    }
+
+    return null;
+  }
+
+  DateTime _stripTime(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  String _formatDate(DateTime value) {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final day = value.day.toString().padLeft(2, '0');
+    final month = monthNames[value.month - 1];
+    return '$day $month ${value.year}';
+  }
+
+  DateTime? _parseFlexibleDate(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed == 'N/A' || trimmed == 'Never') {
+      return null;
+    }
+
+    final iso = DateTime.tryParse(trimmed);
+    if (iso != null) return iso;
+
+    const months = {
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
+    };
+
+    final shortDate = RegExp(
+      r'^(\d{2}) ([A-Za-z]{3}) (\d{4})$',
+    ).firstMatch(trimmed);
+    if (shortDate != null) {
+      return DateTime(
+        int.parse(shortDate.group(3)!),
+        months[shortDate.group(2)!]!,
+        int.parse(shortDate.group(1)!),
+      );
+    }
+
+    final commaDate = RegExp(
+      r'^([A-Za-z]{3}) (\d{1,2}), (\d{4})$',
+    ).firstMatch(trimmed);
+    if (commaDate != null) {
+      return DateTime(
+        int.parse(commaDate.group(3)!),
+        months[commaDate.group(1)!]!,
+        int.parse(commaDate.group(2)!),
+      );
+    }
+
+    return null;
   }
 
   void _onFilterNotifications(
