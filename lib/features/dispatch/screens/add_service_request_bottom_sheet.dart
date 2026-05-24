@@ -163,7 +163,12 @@ class _AddServiceRequestBottomSheetState
     ServiceRequestInventoryItem? existingItem,
     int? editIndex,
   }) async {
-    String? selectedInventoryId = existingItem?.inventoryItemId;
+    final hasExistingInventoryMatch = _inventoryOptions.any(
+      (item) => item.id == existingItem?.inventoryItemId,
+    );
+    String? selectedInventoryId = hasExistingInventoryMatch
+        ? existingItem?.inventoryItemId
+        : null;
     final nameController = TextEditingController(
       text: existingItem?.name ?? '',
     );
@@ -558,33 +563,55 @@ class _AddServiceRequestBottomSheetState
                   ),
                   if (_assignmentMode == 'now') ...[
                     const SizedBox(height: 14),
-                    if (_isLoadingSupportData)
-                      const LinearProgressIndicator(minHeight: 2)
-                    else
-                      DropdownButtonFormField<String>(
-                        value: _selectedTechnicianId,
-                        decoration: _dropdownDecoration(
-                          labelText: 'Technician',
+                    if (_technicians.isEmpty && !_isLoadingSupportData)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        items: _technicians
-                            .map(
-                              (tech) => DropdownMenuItem<String>(
-                                value: tech.id,
-                                child: Text('${tech.name} (${tech.status})'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          final selectedTech = _technicians
-                              .where((tech) => tech.id == value)
-                              .cast<Technician?>()
-                              .firstOrNull;
-                          setState(() {
-                            _selectedTechnicianId = value;
-                            _selectedTechnicianName = selectedTech?.name;
-                          });
-                        },
-                      ),
+                        child: const Text(
+                          'No technicians found yet. Add a technician first or choose Assign Later.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    if (_technicians.isNotEmpty || _isLoadingSupportData) ...[
+                      const SizedBox(height: 14),
+                      if (_isLoadingSupportData)
+                        const LinearProgressIndicator(minHeight: 2)
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedTechnicianId,
+                          decoration: _dropdownDecoration(
+                            labelText: 'Technician',
+                          ),
+                          items: _technicians
+                              .map(
+                                (tech) => DropdownMenuItem<String>(
+                                  value: tech.id,
+                                  child: Text('${tech.name} (${tech.status})'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            final selectedTech = _technicians
+                                .where((tech) => tech.id == value)
+                                .cast<Technician?>()
+                                .firstOrNull;
+                            setState(() {
+                              _selectedTechnicianId = value;
+                              _selectedTechnicianName = selectedTech?.name;
+                            });
+                          },
+                        ),
+                    ],
                   ],
                 ],
               ),

@@ -56,9 +56,14 @@ class User extends Equatable {
   String get initials {
     final source = displayName.trim();
     if (source.isEmpty) return 'RM';
-    final parts = source.split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+    final parts = source
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
     if (parts.length == 1) {
-      return parts.first.substring(0, parts.first.length >= 2 ? 2 : 1).toUpperCase();
+      return parts.first
+          .substring(0, parts.first.length >= 2 ? 2 : 1)
+          .toUpperCase();
     }
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }

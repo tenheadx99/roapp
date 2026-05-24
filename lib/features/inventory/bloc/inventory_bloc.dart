@@ -191,8 +191,8 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       emit(
         currentState.copyWith(
           filteredItems: filtered,
-          selectedCategory: category == 'All' ||
-                  currentState.categories.contains(category)
+          selectedCategory:
+              category == 'All' || currentState.categories.contains(category)
               ? category
               : 'All',
         ),
@@ -207,8 +207,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
   ) {
     return items.where((item) {
       final matchesCategory = category == 'All' || item.category == category;
-      final matchesQuery =
-          item.name.toLowerCase().contains(query);
+      final matchesQuery = item.name.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
   }

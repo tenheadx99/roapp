@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:roapp/core/database/dummy_data.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
@@ -486,6 +487,15 @@ CREATE TABLE IF NOT EXISTS service_attachments (
 
   Future<void> seedData() async {
     final db = await database;
+    await _ensureDefaultAdmin(db);
+  }
+
+  Future<void> loadDemoData({bool replaceExisting = true}) async {
+    final db = await database;
+    if (replaceExisting) {
+      await clearAllData();
+    }
+    await DummyData.seed(db);
     await _ensureDefaultAdmin(db);
   }
 

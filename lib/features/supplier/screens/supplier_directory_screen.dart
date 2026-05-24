@@ -468,7 +468,8 @@ class _SupplierCard extends StatelessWidget {
                       SubRegularText(
                         text: '${supplier.contactPerson} • ${supplier.city}',
                       ),
-                      if (supplier.phone.isNotEmpty || supplier.email.isNotEmpty)
+                      if (supplier.phone.isNotEmpty ||
+                          supplier.email.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: SubRegularText(
@@ -643,7 +644,9 @@ class _SupplierCard extends StatelessWidget {
     final launched = await launchUrl(uri);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to open the selected contact action.')),
+        const SnackBar(
+          content: Text('Unable to open the selected contact action.'),
+        ),
       );
     }
   }

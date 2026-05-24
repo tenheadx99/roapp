@@ -67,7 +67,9 @@ class _AddInventoryItemBottomSheetState
   Future<void> _loadCategories() async {
     try {
       final categories = await _inventoryRepository.getCategories();
-      final available = categories.where((category) => category != 'All').toList();
+      final available = categories
+          .where((category) => category != 'All')
+          .toList();
       if (mounted && available.isNotEmpty) {
         setState(() {
           _categories = available;
@@ -106,12 +108,15 @@ class _AddInventoryItemBottomSheetState
               final categoryName = controller.text.trim();
               if (categoryName.isEmpty) return;
 
-              context.read<InventoryBloc>().add(AddInventoryCategory(categoryName));
+              context.read<InventoryBloc>().add(
+                AddInventoryCategory(categoryName),
+              );
               if (!_categories.contains(categoryName)) {
                 setState(() {
-                  _categories = [..._categories, categoryName]..sort(
-                    (a, b) => a.toLowerCase().compareTo(b.toLowerCase()),
-                  );
+                  _categories = [
+                    ..._categories,
+                    categoryName,
+                  ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
                   _selectedCategory = categoryName;
                 });
               }
@@ -126,9 +131,9 @@ class _AddInventoryItemBottomSheetState
 
   void _submitForm() {
     if (_name.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name is required')));
       return;
     }
 
@@ -305,7 +310,9 @@ class _AddInventoryItemBottomSheetState
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Color(0xFF007FFF)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF007FFF),
+                            ),
                           ),
                           filled: true,
                           fillColor: Colors.white,

@@ -414,7 +414,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      'Service History',
+                      'Previous Services',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -488,7 +488,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               const Padding(
                 padding: EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
-                  'RECENT VISITS',
+                  'PREVIOUS SERVICES',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
@@ -497,6 +497,26 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   ),
                 ),
               ),
+              if (history.isNotEmpty) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _LifecycleStat(
+                        label: 'Total Services',
+                        value: '${history.length}',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _LifecycleStat(
+                        label: 'Last Visit',
+                        value: history.first.date.split('•').first.trim(),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               if (history.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -609,6 +629,26 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                       ),
                                     );
                                   }).toList(),
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'WORK DONE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  item.notes.trim().isEmpty
+                                      ? 'No technician notes recorded.'
+                                      : item.notes,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    height: 1.4,
+                                    color: Color(0xFF334155),
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                                 const Divider(height: 1),

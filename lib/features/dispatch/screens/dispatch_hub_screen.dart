@@ -765,9 +765,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
         text: 'Service invoice for ${request.customerName}',
       );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Invoice saved and ready to share: $path')),
       );
     } catch (e) {

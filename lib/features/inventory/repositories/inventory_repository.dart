@@ -15,7 +15,10 @@ class InventoryRepository {
 
   Future<List<String>> getCategories() async {
     final db = await dbHelper.database;
-    final maps = await db.query('product_categories', orderBy: 'name COLLATE NOCASE ASC');
+    final maps = await db.query(
+      'product_categories',
+      orderBy: 'name COLLATE NOCASE ASC',
+    );
     final categories = maps
         .map((row) => row['name'] as String)
         .where((name) => name.trim().isNotEmpty)
@@ -37,14 +40,10 @@ class InventoryRepository {
 
     if (existing.isNotEmpty) return;
 
-    await db.insert(
-      'product_categories',
-      {
-        'id': 'cat-${uuid.v4()}',
-        'name': trimmedName,
-      },
-      conflictAlgorithm: ConflictAlgorithm.ignore,
-    );
+    await db.insert('product_categories', {
+      'id': 'cat-${uuid.v4()}',
+      'name': trimmedName,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
   Future<void> addInventoryItem(InventoryItem item) async {

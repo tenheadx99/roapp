@@ -36,12 +36,13 @@ class _SleekAnimationWrapperState extends State<SleekAnimationWrapper>
       ),
     );
 
-    _slideAnimation = Tween<Offset>(begin: widget.offset, end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
+    _slideAnimation = Tween<Offset>(begin: widget.offset, end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.0, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
 
     Future.delayed(widget.delay, () {
       if (mounted) {

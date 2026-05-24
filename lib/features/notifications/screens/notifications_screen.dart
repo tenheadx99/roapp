@@ -439,10 +439,7 @@ class NotificationsScreen extends StatelessWidget {
         break;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => destination),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => destination));
   }
 
   void _showArchiveSheet(BuildContext context) {
@@ -467,7 +464,10 @@ class NotificationsScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SemiBoldTextView(text: 'Notification Archive', fontSize: 18),
+                const SemiBoldTextView(
+                  text: 'Notification Archive',
+                  fontSize: 18,
+                ),
                 const SizedBox(height: 16),
                 if (archived.isEmpty)
                   const Text('No archived notifications yet.')

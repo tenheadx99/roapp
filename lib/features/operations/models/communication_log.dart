@@ -40,5 +40,12 @@ class CommunicationLog extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, customerId, channel, note, createdAt, createdBy];
+  List<Object?> get props => [
+    id,
+    customerId,
+    channel,
+    note,
+    createdAt,
+    createdBy,
+  ];
 }

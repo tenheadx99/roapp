@@ -192,7 +192,9 @@ class SupplierBloc extends Bloc<SupplierEvent, SupplierState> {
           s.contactPerson.toLowerCase().contains(query) ||
           s.phone.toLowerCase().contains(query) ||
           s.email.toLowerCase().contains(query) ||
-          s.specialties.any((specialty) => specialty.toLowerCase().contains(query));
+          s.specialties.any(
+            (specialty) => specialty.toLowerCase().contains(query),
+          );
 
       final matchesCategory =
           category == 'All Suppliers' ||

@@ -86,7 +86,6 @@ class DashboardScreen extends StatelessWidget {
               },
             ),
 
-
             IconButton(
               icon: Icon(Icons.notifications_none, color: foreground),
               onPressed: () {
@@ -832,7 +831,9 @@ Widget _buildRecentActivity(
                     decoration: BoxDecoration(
                       color: iconBg,
                       shape: BoxShape.circle,
-                      border: Border.all(color: iconColor.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: iconColor.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Icon(iconToUse, color: iconColor, size: 20),
                   ),
@@ -1245,7 +1246,10 @@ class _StatCardState extends State<_StatCard> {
                   ),
                   Flexible(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: badgeColors.$1,
                         borderRadius: BorderRadius.circular(4),

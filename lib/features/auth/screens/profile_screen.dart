@@ -16,7 +16,6 @@ import '../../settings/bloc/settings_cubit.dart';
 import '../bloc/auth_bloc.dart';
 import '../models/user.dart';
 import '../repositories/auth_repository.dart';
-import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final User user;
@@ -37,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _newPasskeyController;
   late final TextEditingController _confirmPasskeyController;
   final AuthRepository _authRepository = AuthRepository();
-  late final Future<_ProfileSummary> _summaryFuture;
+  late Future<_ProfileSummary> _summaryFuture;
   bool _isSaving = false;
   bool _isUpdatingPasskey = false;
   bool _obscureCurrentPasskey = true;
@@ -252,9 +251,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               CheckboxListTile(
                 value: shouldBackup,
-                onChanged: (val) => setDialogState(
-                  () => shouldBackup = val ?? false,
-                ),
+                onChanged: (val) =>
+                    setDialogState(() => shouldBackup = val ?? false),
                 title: const Text(
                   'Backup before deleting',
                   style: TextStyle(fontSize: 14),
@@ -307,12 +305,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }
                   try {
                     await DatabaseHelper.instance.clearAllData();
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text('All data cleared.')),
-                      );
-                    }
+                    if (!mounted || !dialogContext.mounted) return;
+                    Navigator.pop(dialogContext);
+                    setState(() {
+                      _summaryFuture = _loadSummary();
+                    });
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(content: Text('All data cleared.')),
+                    );
                   } catch (e) {
                     if (dialogContext.mounted) {
                       ScaffoldMessenger.of(
@@ -330,6 +330,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 }
               },
               child: const Text('Confirm & Clear'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadDemoData() async {
+    bool shouldBackup = context.read<SettingsCubit>().state.autoBackupEnabled;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Load Demo Data'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will replace current business records with sample customers, inventory, technicians, dispatch jobs, and previous service history.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              CheckboxListTile(
+                value: shouldBackup,
+                onChanged: (val) =>
+                    setDialogState(() => shouldBackup = val ?? false),
+                title: const Text(
+                  'Backup current data first',
+                  style: TextStyle(fontSize: 14),
+                ),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  if (shouldBackup) {
+                    final message = await DbExporter.exportDatabase();
+                    if (dialogContext.mounted) {
+                      ScaffoldMessenger.of(
+                        dialogContext,
+                      ).showSnackBar(SnackBar(content: Text(message)));
+                    }
+                  }
+
+                  await DatabaseHelper.instance.loadDemoData();
+
+                  if (!mounted || !dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  context.read<AuthBloc>().add(AuthStarted());
+                  Navigator.of(this.context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AppAccessGate()),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  if (!dialogContext.mounted) return;
+                  ScaffoldMessenger.of(
+                    dialogContext,
+                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              },
+              child: const Text('Load Demo Data'),
             ),
           ],
         ),
@@ -392,7 +463,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       businessPhone: phoneController.text.trim(),
                       businessAddress: addressController.text.trim(),
                     );
-                    if (!mounted) return;
+                    if (!mounted || !context.mounted) return;
                     Navigator.pop(context);
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       const SnackBar(
@@ -642,6 +713,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: _exportBackup,
                       icon: const Icon(Icons.download_rounded),
                       label: const Text('Download Database'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                        side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        foregroundColor: const Color(0xFF007FFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _loadDemoData,
+                      icon: const Icon(Icons.auto_awesome_motion_outlined),
+                      label: const Text('Load Demo Data'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
                         side: const BorderSide(color: Color(0xFFBFDBFE)),

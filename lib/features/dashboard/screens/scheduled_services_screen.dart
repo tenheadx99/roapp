@@ -5,10 +5,7 @@ import '../../../widgets/sub_regular_text.dart';
 class ScheduledServicesScreen extends StatelessWidget {
   final List<dynamic> scheduledServices;
 
-  const ScheduledServicesScreen({
-    super.key,
-    required this.scheduledServices,
-  });
+  const ScheduledServicesScreen({super.key, required this.scheduledServices});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +55,10 @@ class ScheduledServicesScreen extends StatelessWidget {
               color: Colors.blue.shade50,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.build_circle_outlined, color: Colors.blue.shade600),
+            child: Icon(
+              Icons.build_circle_outlined,
+              color: Colors.blue.shade600,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -70,9 +70,7 @@ class ScheduledServicesScreen extends StatelessWidget {
                   fontSize: 14,
                 ),
                 const SizedBox(height: 4),
-                SubRegularText(
-                  text: 'Customer: ${service['customerName']}',
-                ),
+                SubRegularText(text: 'Customer: ${service['customerName']}'),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -89,7 +87,10 @@ class ScheduledServicesScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     if (service['status'] != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: service['status'] == 'Pending'
                               ? Colors.orange.shade50

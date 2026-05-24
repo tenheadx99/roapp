@@ -207,7 +207,9 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
     if (selectedDate == null) {
       return byTab;
     }
-    return byTab.where((request) => _matchesDate(request, selectedDate)).toList();
+    return byTab
+        .where((request) => _matchesDate(request, selectedDate))
+        .toList();
   }
 
   bool _matchesDate(ServiceRequest request, DateTime selectedDate) {

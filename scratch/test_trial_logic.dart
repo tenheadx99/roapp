@@ -37,8 +37,8 @@ void main() {
     trialOverrideUnlocked: true,
   );
   print('\n--- Test Case 4: Expired but overridden ---');
-  print('Is expired logic true: ${overridden.isTrialExpired}'); 
+  print('Is expired logic true: ${overridden.isTrialExpired}');
   print('Days remaining: ${overridden.daysRemainingInTrial}');
-  
+
   print('\nAll logic tests passed!');
 }

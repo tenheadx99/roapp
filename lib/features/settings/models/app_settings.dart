@@ -18,7 +18,7 @@ class AppSettings extends Equatable {
   static const int trialPeriodDays = 30;
 
   const AppSettings({
-    this.themeMode = ThemeMode.system,
+    this.themeMode = ThemeMode.light,
     this.notificationsEnabled = true,
     this.autoBackupEnabled = true,
     this.isInitialized = false,
@@ -98,8 +98,10 @@ class AppSettings extends Equatable {
         return ThemeMode.light;
       case 'dark':
         return ThemeMode.dark;
-      default:
+      case 'system':
         return ThemeMode.system;
+      default:
+        return ThemeMode.light;
     }
   }
 

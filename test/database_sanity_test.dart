@@ -59,5 +59,49 @@ void main() {
         await dbHelper.close();
       },
     );
+
+    test(
+      'loadDemoData seeds customers, inventory, technicians, and dispatch',
+      () async {
+        final dbHelper = DatabaseHelper.instance;
+        await dbHelper.clearAllData();
+        await dbHelper.loadDemoData();
+        final db = await dbHelper.database;
+
+        final customers =
+            Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM customers'),
+            ) ??
+            0;
+        final inventory =
+            Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM inventory'),
+            ) ??
+            0;
+        final technicians =
+            Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM technicians'),
+            ) ??
+            0;
+        final requests =
+            Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM service_requests'),
+            ) ??
+            0;
+        final history =
+            Sqflite.firstIntValue(
+              await db.rawQuery('SELECT COUNT(*) FROM service_history'),
+            ) ??
+            0;
+
+        expect(customers, greaterThan(0));
+        expect(inventory, greaterThan(0));
+        expect(technicians, greaterThan(0));
+        expect(requests, greaterThan(0));
+        expect(history, greaterThan(0));
+
+        await dbHelper.close();
+      },
+    );
   });
 }
