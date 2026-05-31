@@ -12,6 +12,7 @@ import '../../../widgets/sub_regular_text.dart';
 import '../../technician/models/technician.dart';
 import '../../technician/repositories/technician_repository.dart';
 import '../../operations/repositories/operations_repository.dart';
+import '../../operations/screens/invoice_preview_screen.dart';
 import '../bloc/dispatch_bloc.dart';
 import '../models/service_request.dart';
 import 'add_service_request_bottom_sheet.dart';
@@ -630,7 +631,22 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                         ),
                         child: const Text('Edit'),
                       ),
-                      if (req.status == 'completed')
+                      if (req.status == 'completed') ...[
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InvoicePreviewScreen(request: req),
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF6366F1),
+                            padding: const EdgeInsets.only(top: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Preview Invoice'),
+                        ),
                         TextButton(
                           onPressed: () => _downloadInvoice(context, req),
                           style: TextButton.styleFrom(
@@ -641,6 +657,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
                           ),
                           child: const Text('Download Invoice'),
                         ),
+                      ],
                     ],
                   ),
                 ],

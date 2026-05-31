@@ -131,12 +131,21 @@ class _AddServiceRequestBottomSheetState
 
   Future<void> _pickSchedule() async {
     final now = DateTime.now();
-    final initialDate = _scheduledFor ?? now;
+    final firstAllowedDate = DateTime(2000);
+    final lastAllowedDate = now.add(const Duration(days: 365 * 10));
+
+    var initialDate = _scheduledFor ?? now;
+    if (initialDate.isBefore(firstAllowedDate)) {
+      initialDate = firstAllowedDate;
+    } else if (initialDate.isAfter(lastAllowedDate)) {
+      initialDate = lastAllowedDate;
+    }
+
     final selectedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: now.subtract(const Duration(days: 1)),
-      lastDate: now.add(const Duration(days: 365)),
+      firstDate: firstAllowedDate,
+      lastDate: lastAllowedDate,
     );
 
     if (selectedDate == null || !mounted) return;
@@ -199,6 +208,7 @@ class _AddServiceRequestBottomSheetState
                   children: [
                     DropdownButtonFormField<String>(
                       value: selectedInventoryId,
+                      isExpanded: true,
                       decoration: _dropdownDecoration(
                         labelText: 'Pick from inventory',
                       ),

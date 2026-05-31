@@ -11,7 +11,13 @@ abstract class CustomerEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadCustomersRequested extends CustomerEvent {}
+class LoadCustomersRequested extends CustomerEvent {
+  final String? initialFilter;
+  const LoadCustomersRequested({this.initialFilter});
+
+  @override
+  List<Object?> get props => [initialFilter];
+}
 
 class SearchCustomers extends CustomerEvent {
   final String query;
@@ -132,8 +138,14 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
 
     try {
       final customers = await repository.getCustomers();
+      final filter = event.initialFilter ?? 'All Records';
+      final filtered = _applyFilters(customers, '', filter);
       emit(
-        CustomerLoaded(allCustomers: customers, filteredCustomers: customers),
+        CustomerLoaded(
+          allCustomers: customers,
+          filteredCustomers: filtered,
+          currentFilter: filter,
+        ),
       );
     } catch (e) {
       emit(CustomerError(e.toString()));
@@ -196,6 +208,8 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
         matchesFilter = c.status == 'Service Due';
       } else if (filterOption == 'Area: West Delhi') {
         matchesFilter = c.area == 'West Delhi';
+      } else if (filterOption == 'AMC Plan') {
+        matchesFilter = c.status == 'AMC Plan';
       }
 
       return matchesQuery && matchesFilter;

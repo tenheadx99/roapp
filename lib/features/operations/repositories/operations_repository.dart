@@ -14,6 +14,7 @@ import 'package:roapp/features/operations/models/invoice.dart';
 import 'package:roapp/features/operations/models/purchase_order.dart';
 import 'package:roapp/features/operations/models/service_attachment.dart';
 import 'package:roapp/features/operations/models/technician_schedule.dart';
+import 'package:roapp/features/settings/repositories/settings_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
 class OperationsRepository {
@@ -278,14 +279,60 @@ class OperationsRepository {
     final filePath = p.join(invoiceDir.path, '$invoiceNumber.html');
     final file = File(filePath);
 
+    final settingsRepository = SettingsRepository();
+    final appSettings = await settingsRepository.loadSettings();
+
+    // Look up the MRP values for each item in the service request
+    final db = await dbHelper.database;
+    final itemIds = request.inventoryItems
+        .map((e) => e.inventoryItemId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList();
+    
+    final mrpMap = <String, double>{};
+    if (itemIds.isNotEmpty) {
+      final placeholders = List.filled(itemIds.length, '?').join(', ');
+      final results = await db.rawQuery(
+        'SELECT id, mrp FROM inventory WHERE id IN ($placeholders)',
+        itemIds,
+      );
+      for (final row in results) {
+        final id = row['id'] as String;
+        final mrp = (row['mrp'] as num).toDouble();
+        mrpMap[id] = mrp;
+      }
+    }
+
     await file.writeAsString(
       _buildServiceInvoiceHtml(
         request: request,
         customer: customer,
         invoiceNumber: invoiceNumber,
         completedAt: completedAt,
+        businessName: appSettings.businessName,
+        businessPhone: appSettings.businessPhone,
+        businessAddress: appSettings.businessAddress,
+        mrpMap: mrpMap,
       ),
     );
+
+    // Sync invoice to database so already completed services get added immediately upon downloading/viewing!
+    if (customer != null) {
+      final invoice = Invoice(
+        id: 'inv-${request.id}',
+        customerId: customer.id,
+        invoiceNumber: invoiceNumber,
+        issueDate: completedAt.toIso8601String(),
+        dueDate: completedAt.toIso8601String(),
+        totalAmount: request.totalAmount,
+        paidAmount: request.totalAmount,
+        status: 'paid',
+        notes:
+            'Auto-generated invoice from completed service request: ${request.type}.',
+      );
+      await upsertInvoice(invoice);
+    }
 
     return file.path;
   }
@@ -350,6 +397,10 @@ class OperationsRepository {
     required Customer? customer,
     required String invoiceNumber,
     required DateTime completedAt,
+    required String businessName,
+    required String businessPhone,
+    required String businessAddress,
+    Map<String, double> mrpMap = const {},
   }) {
     final customerName = customer?.name ?? request.customerName;
     final customerPhone = customer?.phone ?? 'N/A';
@@ -362,22 +413,25 @@ class OperationsRepository {
     final rows = lineItems.isEmpty
         ? '''
             <tr>
-              <td colspan="4" style="padding:12px;border-bottom:1px solid #e2e8f0;color:#64748b;text-align:center;">
+              <td colspan="5" style="padding:16px; border-bottom:1px solid #E2E8F0; color:#64748B; text-align:center; font-style:italic;">
                 No inventory items were added to this service.
               </td>
             </tr>
           '''
         : lineItems
               .map(
-                (item) =>
-                    '''
+                (item) {
+                  final mrp = mrpMap[item.inventoryItemId] ?? item.unitPrice;
+                  return '''
                   <tr>
-                    <td style="padding:12px;border-bottom:1px solid #e2e8f0;">${_escapeHtml(item.name)}</td>
-                    <td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:center;">${item.quantity}</td>
-                    <td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatRupee(item.unitPrice, decimalDigits: 2)}</td>
-                    <td style="padding:12px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatRupee(item.lineTotal, decimalDigits: 2)}</td>
+                    <td style="padding:16px; border-bottom:1px solid #E2E8F0; font-weight:600; color:#1E293B;">${_escapeHtml(item.name)}</td>
+                    <td data-label="Qty" style="padding:16px; border-bottom:1px solid #E2E8F0; text-align:center; color:#334155;">${item.quantity}</td>
+                    <td data-label="MRP" style="padding:16px; border-bottom:1px solid #E2E8F0; text-align:right; color:#64748B; font-weight:500;">${formatRupee(mrp, decimalDigits: 2)}</td>
+                    <td data-label="Price" style="padding:16px; border-bottom:1px solid #E2E8F0; text-align:right; color:#334155;">${formatRupee(item.unitPrice, decimalDigits: 2)}</td>
+                    <td data-label="Total" style="padding:16px; border-bottom:1px solid #E2E8F0; text-align:right; font-weight:700; color:#0F172A;">${formatRupee(item.lineTotal, decimalDigits: 2)}</td>
                   </tr>
-                ''',
+                ''';
+                },
               )
               .join();
 
@@ -390,70 +444,318 @@ class OperationsRepository {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>$invoiceNumber</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Outfit', sans-serif;
+        margin: 0;
+        padding: 40px 24px;
+        background-color: #F8FAFC;
+        color: #0F172A;
+        -webkit-print-color-adjust: exact;
+      }
+      .container {
+        max-width: 850px;
+        margin: 0 auto;
+        background: #FFFFFF;
+        padding: 48px;
+        border-radius: 24px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+        border: 1px solid #E2E8F0;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 2px solid #F1F5F9;
+        padding-bottom: 32px;
+        margin-bottom: 32px;
+      }
+      .header-title h1 {
+        margin: 0;
+        font-size: 32px;
+        font-weight: 800;
+        color: #007FFF;
+        letter-spacing: -0.5px;
+      }
+      .invoice-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        background: #DCFCE7;
+        color: #15803D;
+        font-weight: 700;
+        font-size: 12px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 8px;
+      }
+      .details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 36px;
+      }
+      .details-card {
+        padding: 24px;
+        background: #F8FAFC;
+        border-radius: 20px;
+        border: 1px solid #E2E8F0;
+      }
+      .details-card h3 {
+        margin: 0 0 12px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        color: #64748B;
+        text-transform: uppercase;
+      }
+      .details-card p {
+        margin: 6px 0;
+        font-size: 14px;
+        color: #334155;
+        line-height: 1.5;
+      }
+      .details-card strong {
+        color: #0F172A;
+      }
+      .table-container {
+        border: 1px solid #E2E8F0;
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 32px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        background: #F1F5F9;
+        padding: 14px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.5px;
+      }
+      .footer-grid {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 24px;
+      }
+      .notes-card {
+        padding: 24px;
+        background: #F8FAFC;
+        border-radius: 20px;
+        border: 1px solid #E2E8F0;
+        align-self: start;
+      }
+      .notes-card h3 {
+        margin: 0 0 10px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        color: #64748B;
+        text-transform: uppercase;
+      }
+      .notes-card p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #475569;
+        white-space: pre-wrap;
+      }
+      .summary-card {
+        padding: 24px;
+        background: #0F172A;
+        color: #FFFFFF;
+        border-radius: 20px;
+      }
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: #94A3B8;
+      }
+      .summary-row.total {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        font-size: 20px;
+        font-weight: 700;
+        color: #FFFFFF;
+      }
+      .summary-row strong {
+        color: #FFFFFF;
+      }
+      .footer-thankyou {
+        text-align: center;
+        margin-top: 48px;
+        padding-top: 24px;
+        border-top: 1px solid #F1F5F9;
+        font-size: 14px;
+        color: #94A3B8;
+        font-weight: 500;
+      }
+      @media (max-width: 600px) {
+        body {
+          padding: 16px 8px;
+          background-color: #FFFFFF;
+        }
+        .container {
+          padding: 16px;
+          border-radius: 16px;
+          box-shadow: none;
+          border: none;
+        }
+        .header {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+          padding-bottom: 24px;
+          margin-bottom: 24px;
+        }
+        .header-business {
+          text-align: left !important;
+        }
+        .details-grid {
+          grid-template-columns: 1fr;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        .details-card {
+          padding: 16px;
+          border-radius: 16px;
+        }
+        .footer-grid {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+        table, thead, tbody, th, td, tr {
+          display: block;
+        }
+        thead {
+          display: none;
+        }
+        tr {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 16px;
+          margin-bottom: 12px;
+        }
+        td {
+          border-bottom: none !important;
+          padding: 6px 0 !important;
+          display: flex;
+          justify-content: space-between;
+          font-size: 14px;
+          text-align: right;
+        }
+        td::before {
+          content: attr(data-label) ": ";
+          font-weight: 700;
+          color: #64748B;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          margin-right: 8px;
+        }
+        td:first-child {
+          font-size: 16px;
+          font-weight: 700;
+          color: #0F172A;
+          border-bottom: 1px solid #E2E8F0 !important;
+          padding-bottom: 10px !important;
+          margin-bottom: 6px;
+          display: block;
+          text-align: left;
+        }
+        td:first-child::before {
+          display: none;
+        }
+      }
+    </style>
   </head>
-  <body style="font-family: Arial, sans-serif; margin: 32px; color: #0f172a;">
-    <div style="max-width: 900px; margin: 0 auto;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px;">
-        <div>
-          <h1 style="margin:0; font-size:28px;">Service Invoice</h1>
-          <p style="margin:8px 0 0; color:#64748b;">$invoiceNumber</p>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="header-title">
+          <h1>Service Invoice</h1>
+          <p style="margin:4px 0 0; color:#64748B; font-weight:600; font-size:15px;">$invoiceNumber</p>
+          <span class="invoice-badge">Paid</span>
         </div>
-        <div style="text-align:right;">
-          <p style="margin:0; font-weight:700;">RO Manager</p>
-          <p style="margin:6px 0 0; color:#64748b;">Generated on ${_formatDate(completedAt)}</p>
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px;">
-        <div style="padding:18px; background:#f8fafc; border-radius:16px;">
-          <p style="margin:0 0 8px; font-size:12px; letter-spacing:1px; color:#64748b;">BILLED TO</p>
-          <p style="margin:0; font-weight:700;">${_escapeHtml(customerName)}</p>
-          <p style="margin:6px 0 0;">Phone: ${_escapeHtml(customerPhone)}</p>
-          <p style="margin:6px 0 0;">Address: ${_escapeHtml(customerAddress)}</p>
-        </div>
-        <div style="padding:18px; background:#f8fafc; border-radius:16px;">
-          <p style="margin:0 0 8px; font-size:12px; letter-spacing:1px; color:#64748b;">SERVICE DETAILS</p>
-          <p style="margin:0;">Type: ${_escapeHtml(request.type)}</p>
-          <p style="margin:6px 0 0;">Model: ${_escapeHtml(model)}</p>
-          <p style="margin:6px 0 0;">Technician: ${_escapeHtml(technician)}</p>
-          <p style="margin:6px 0 0;">Completed: ${_escapeHtml(request.time)}</p>
+        <div class="header-business" style="text-align:right;">
+          <p style="margin:0; font-weight:800; font-size:18px; color:#0F172A;">${_escapeHtml(businessName)}</p>
+          ${businessPhone.trim().isNotEmpty ? '<p style="margin:4px 0 0; color:#475569; font-size:14px;">📞 ${_escapeHtml(businessPhone)}</p>' : ''}
+          ${businessAddress.trim().isNotEmpty ? '<p style="margin:4px 0 0; color:#475569; font-size:14px; max-width:250px; display:inline-block; word-break:break-word;">📍 ${_escapeHtml(businessAddress)}</p>' : ''}
+          <p style="margin:8px 0 0; color:#94A3B8; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Issued: ${_formatDate(completedAt)}</p>
         </div>
       </div>
 
-      <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
-        <thead>
-          <tr style="background:#eff6ff;">
-            <th style="padding:12px; text-align:left;">Item</th>
-            <th style="padding:12px; text-align:center;">Qty</th>
-            <th style="padding:12px; text-align:right;">Unit Price</th>
-            <th style="padding:12px; text-align:right;">Line Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          $rows
-        </tbody>
-      </table>
-
-      <div style="display:flex; justify-content:space-between; gap:20px;">
-        <div style="flex:1; padding:18px; background:#f8fafc; border-radius:16px;">
-          <p style="margin:0 0 8px; font-size:12px; letter-spacing:1px; color:#64748b;">NOTES</p>
-          <p style="margin:0; white-space:pre-wrap;">${_escapeHtml(notes)}</p>
+      <div class="details-grid">
+        <div class="details-card">
+          <h3>Billed To</h3>
+          <p><strong>${_escapeHtml(customerName)}</strong></p>
+          <p>Phone: ${_escapeHtml(customerPhone)}</p>
+          <p>Address: ${_escapeHtml(customerAddress)}</p>
         </div>
-        <div style="width:280px; padding:18px; background:#0f172a; color:white; border-radius:16px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <div class="details-card">
+          <h3>Service Details</h3>
+          <p>Type: <strong>${_escapeHtml(request.type)}</strong></p>
+          <p>Model: ${_escapeHtml(model)}</p>
+          <p>Technician: ${_escapeHtml(technician)}</p>
+          <p>Completed: ${_escapeHtml(request.time)}</p>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="padding:14px 16px;">Item / Spare Part</th>
+              <th style="padding:14px 16px; text-align:center;">Qty</th>
+              <th style="padding:14px 16px; text-align:right;">MRP</th>
+              <th style="padding:14px 16px; text-align:right;">Price</th>
+              <th style="padding:14px 16px; text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            $rows
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer-grid">
+        <div class="notes-card">
+          <h3>Service Notes</h3>
+          <p>${_escapeHtml(notes)}</p>
+        </div>
+        <div class="summary-card">
+          <div class="summary-row">
             <span>Subtotal</span>
             <strong>${formatRupee(request.totalAmount, decimalDigits: 2)}</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <span>Tax</span>
+          <div class="summary-row">
+            <span>Tax (GST 0%)</span>
             <strong>${formatRupee(0, decimalDigits: 2)}</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:1px solid rgba(255,255,255,0.2); font-size:18px;">
+          <div class="summary-row total">
             <span>Total</span>
-            <strong>${formatRupee(request.totalAmount, decimalDigits: 2)}</strong>
+            <span>${formatRupee(request.totalAmount, decimalDigits: 2)}</span>
           </div>
         </div>
+      </div>
+
+      <div class="footer-thankyou">
+        Thank you for choosing ${_escapeHtml(businessName)}!
       </div>
     </div>
   </body>
@@ -486,5 +788,16 @@ class OperationsRepository {
       'Dec',
     ];
     return '${value.day.toString().padLeft(2, '0')} ${labels[value.month - 1]} ${value.year}';
+  }
+
+  Future<List<ServiceRequest>>
+  getCompletedServiceRequestsWithoutInvoice() async {
+    final db = await dbHelper.database;
+    final maps = await db.rawQuery('''
+      SELECT sr.* FROM service_requests sr
+      LEFT JOIN invoices inv ON inv.id = 'inv-' || sr.id
+      WHERE sr.status = 'completed' AND inv.id IS NULL
+    ''');
+    return maps.map((e) => ServiceRequest.fromMap(e)).toList();
   }
 }

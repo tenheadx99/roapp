@@ -584,6 +584,16 @@ Widget _buildQuickActions(BuildContext context) {
         MaterialPageRoute(builder: (_) => const InsightsScreen()),
       ),
     ),
+    _QuickActionItem(
+      icon: Icons.verified_user_outlined,
+      label: 'AMC Plans',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const CustomerListScreen(initialFilter: 'AMC Plan'),
+        ),
+      ),
+    ),
   ];
 
   return LayoutBuilder(

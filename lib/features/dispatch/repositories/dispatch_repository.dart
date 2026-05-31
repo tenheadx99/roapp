@@ -236,6 +236,44 @@ class DispatchRepository {
       whereArgs: [request.id],
     );
 
+    final existingInvoice = await db.query(
+      'invoices',
+      where: 'id = ?',
+      whereArgs: ['inv-${request.id}'],
+      limit: 1,
+    );
+
+    final datePart =
+        '${completionTime.year}${completionTime.month.toString().padLeft(2, '0')}${completionTime.day.toString().padLeft(2, '0')}';
+    final suffix = request.id.length >= 6
+        ? request.id.substring(request.id.length - 6).toUpperCase()
+        : request.id.toUpperCase();
+    final invoiceNumber = 'SVC-$datePart-$suffix';
+
+    final invoiceData = {
+      'id': 'inv-${request.id}',
+      'customerId': customer.id,
+      'invoiceNumber': invoiceNumber,
+      'issueDate': completionTime.toIso8601String(),
+      'dueDate': completionTime.toIso8601String(),
+      'totalAmount': request.totalAmount,
+      'paidAmount': request.totalAmount,
+      'status': 'paid',
+      'notes':
+          'Auto-generated invoice from completed service request: ${request.type}.',
+    };
+
+    if (existingInvoice.isEmpty) {
+      await db.insert('invoices', invoiceData);
+    } else {
+      await db.update(
+        'invoices',
+        invoiceData,
+        where: 'id = ?',
+        whereArgs: ['inv-${request.id}'],
+      );
+    }
+
     if (existingHistory.isNotEmpty) {
       return;
     }

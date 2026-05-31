@@ -15,6 +15,7 @@ import '../../supplier/models/supplier.dart';
 import '../../supplier/repositories/supplier_repository.dart';
 import '../../technician/models/technician.dart';
 import '../../technician/repositories/technician_repository.dart';
+import '../../dispatch/models/service_request.dart';
 
 class OperationsCenterScreen extends StatefulWidget {
   const OperationsCenterScreen({super.key});
@@ -114,6 +115,12 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
       _showMessage('Create a customer first to add an invoice.');
       return;
     }
+
+    final completedRequests = existing == null
+        ? await _operationsRepository
+              .getCompletedServiceRequestsWithoutInvoice()
+        : const <ServiceRequest>[];
+
     final totalController = TextEditingController(
       text: existing?.totalAmount.toStringAsFixed(0) ?? '',
     );
@@ -127,6 +134,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
     DateTime dueDate =
         DateTime.tryParse(existing?.dueDate ?? '') ??
         DateTime.now().add(const Duration(days: 7));
+    String? selectedRequestId;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -143,13 +151,72 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     existing == null ? 'Create Invoice' : 'Update Invoice',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 16),
+                  if (existing == null && completedRequests.isNotEmpty) ...[
+                    DropdownButtonFormField<ServiceRequest?>(
+                      value: null,
+                      decoration: InputDecoration(
+                        labelText: 'Import Completed Service (Optional)',
+                        helperText:
+                            'Select to auto-populate customer, total, and notes',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.build_circle_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem<ServiceRequest?>(
+                          value: null,
+                          child: Text('-- Select to Auto-populate --'),
+                        ),
+                        ...completedRequests.map(
+                          (req) => DropdownMenuItem<ServiceRequest?>(
+                            value: req,
+                            child: Text(
+                              '${req.customerName} - ${req.type} (${req.time})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (req) {
+                        if (req == null) return;
+                        setSheetState(() {
+                          final matchingCustomer = _customers.firstWhere(
+                            (c) =>
+                                c.id == req.customerId ||
+                                c.name == req.customerName,
+                            orElse: () => _customers.first,
+                          );
+                          selectedCustomerId = matchingCustomer.id;
+                          totalController.text = req.totalAmount
+                              .toStringAsFixed(0);
+                          paidController.text = req.totalAmount.toStringAsFixed(
+                            0,
+                          );
+                          notesController.text = req.notes?.isNotEmpty == true
+                              ? req.notes!.trim()
+                              : 'Auto-generated invoice from completed service request: ${req.type}.';
+                          final reqDate =
+                              DateTime.tryParse(req.completedAt ?? '') ??
+                              DateTime.now();
+                          issueDate = reqDate;
+                          dueDate = reqDate;
+                          selectedRequestId = req.id;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   DropdownButtonFormField<String>(
                     value: selectedCustomerId,
                     decoration: const InputDecoration(
@@ -257,12 +324,32 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                         _showMessage('Enter a valid paid amount.');
                         return;
                       }
+
+                      final invoiceId = selectedRequestId != null
+                          ? 'inv-$selectedRequestId'
+                          : (existing?.id ?? _uuid.v4());
+
+                      String invoiceNumber = existing?.invoiceNumber ?? '';
+                      if (invoiceNumber.isEmpty) {
+                        if (selectedRequestId != null) {
+                          final datePart =
+                              '${issueDate.year}${issueDate.month.toString().padLeft(2, '0')}${issueDate.day.toString().padLeft(2, '0')}';
+                          final suffix = selectedRequestId!.length >= 6
+                              ? selectedRequestId!
+                                    .substring(selectedRequestId!.length - 6)
+                                    .toUpperCase()
+                              : selectedRequestId!.toUpperCase();
+                          invoiceNumber = 'SVC-$datePart-$suffix';
+                        } else {
+                          invoiceNumber =
+                              'INV-${DateTime.now().millisecondsSinceEpoch}';
+                        }
+                      }
+
                       final invoice = Invoice(
-                        id: existing?.id ?? _uuid.v4(),
+                        id: invoiceId,
                         customerId: selectedCustomerId,
-                        invoiceNumber:
-                            existing?.invoiceNumber ??
-                            'INV-${DateTime.now().millisecondsSinceEpoch}',
+                        invoiceNumber: invoiceNumber,
                         issueDate: issueDate.toIso8601String(),
                         dueDate: dueDate.toIso8601String(),
                         totalAmount: total,

@@ -10,12 +10,13 @@ import '../../../widgets/responsive_layout.dart';
 import 'customer_profile_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
-  const CustomerListScreen({super.key});
+  final String? initialFilter;
+  const CustomerListScreen({super.key, this.initialFilter});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CustomerBloc()..add(LoadCustomersRequested()),
+      create: (_) => CustomerBloc()..add(LoadCustomersRequested(initialFilter: initialFilter)),
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7F8),
         appBar: AppBar(
@@ -165,6 +166,7 @@ Widget _buildFilterSection(BuildContext context, {bool isVertical = false}) {
         {'label': 'All Records', 'icon': Icons.filter_list},
         {'label': 'Service Due', 'icon': null},
         {'label': 'Area: West Delhi', 'icon': null},
+        {'label': 'AMC Plan', 'icon': null},
       ];
 
       if (isVertical) {
