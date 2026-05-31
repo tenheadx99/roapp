@@ -398,24 +398,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     if (!phoneNum.startsWith('+')) {
                       phoneNum = '+91$phoneNum'; // default formatting
                     }
-                    final appUrl = Uri.parse('whatsapp://send?phone=$phoneNum');
-                    final webUrl = Uri.parse('https://wa.me/$phoneNum');
-
-                    try {
-                      if (await canLaunchUrl(appUrl)) {
-                        await launchUrl(
-                          appUrl,
-                          mode: LaunchMode.externalApplication,
-                        );
-                      } else {
-                        await launchUrl(
-                          webUrl,
-                          mode: LaunchMode.externalApplication,
-                        );
-                      }
-                    } catch (e) {
-                      debugPrint('Could not launch WhatsApp: $e');
-                    }
+                    _showWhatsAppTemplatesSheet(context, phoneNum);
                   },
                   child: Container(
                     height: 48,
@@ -811,6 +794,93 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     ),
                   ],
                 ),
+                if (data.contracts.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'ACTIVE AMC CONTRACTS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF94A3B8),
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...data.contracts.map((contract) {
+                    final visitsUsed = contract.visitsUsed;
+                    final visitsIncluded = contract.visitsIncluded;
+                    final progress = visitsIncluded > 0 ? (visitsUsed / visitsIncluded).clamp(0.0, 1.0) : 0.0;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007FFF).withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF007FFF).withOpacity(0.12),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                contract.contractName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: Color(0xFF007FFF),
+                                ),
+                              ),
+                              Text(
+                                'Visits: $visitsUsed / $visitsIncluded',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor: const Color(0xFF007FFF).withOpacity(0.12),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF007FFF)),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Start: ${contract.startDate}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'Ends: ${contract.endDate}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Color(0xFF94A3B8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
                 const SizedBox(height: 16),
                 const Text(
                   'RECENT COMMUNICATION',
@@ -1164,6 +1234,126 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   },
                 ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showWhatsAppTemplatesSheet(BuildContext context, String phoneNum) {
+    final name = customer.name;
+    final model = customer.model;
+    
+    final templates = [
+      {
+        'title': 'Custom Message (Blank)',
+        'subtitle': 'Open standard empty WhatsApp chat',
+        'message': '',
+      },
+      {
+        'title': 'Job Scheduled',
+        'subtitle': 'Confirm upcoming service details',
+        'message': 'Hello $name, this is Ramesh Admin from RO Service. Your service request for your $model purifier has been scheduled. Our technician will contact you shortly. Thanks!',
+      },
+      {
+        'title': 'Invoice Details',
+        'subtitle': 'Share invoice confirmation',
+        'message': 'Hello $name, this is Ramesh Admin. The invoice for your RO service is ready. The service has been marked as fully completed. Thank you for your business!',
+      },
+      {
+        'title': 'Service Due Reminder',
+        'subtitle': 'Remind customer of upcoming maintenance',
+        'message': 'Hello $name, this is Ramesh Admin. Your $model RO water purifier scheduled maintenance service is due. Please let us know a convenient time to schedule. Thanks!',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Select WhatsApp Template',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: templates.length,
+                  separatorBuilder: (c, i) => const Divider(height: 1),
+                  itemBuilder: (c, idx) {
+                    final item = templates[idx];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      title: Text(
+                        item['title']!,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        item['subtitle']!,
+                        style: TextStyle(
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: Color(0xFF25D366)),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        final message = Uri.encodeComponent(item['message']!);
+                        
+                        final appUrl = Uri.parse(
+                          item['message']!.isEmpty
+                              ? 'whatsapp://send?phone=$phoneNum'
+                              : 'whatsapp://send?phone=$phoneNum&text=$message',
+                        );
+                        final webUrl = Uri.parse(
+                          item['message']!.isEmpty
+                              ? 'https://wa.me/$phoneNum'
+                              : 'https://wa.me/$phoneNum?text=$message',
+                        );
+
+                        try {
+                          if (await canLaunchUrl(appUrl)) {
+                            await launchUrl(
+                              appUrl,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            await launchUrl(
+                              webUrl,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          }
+                        } catch (e) {
+                          debugPrint('Could not launch WhatsApp: $e');
+                        }
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },

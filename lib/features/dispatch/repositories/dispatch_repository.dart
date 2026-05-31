@@ -229,6 +229,30 @@ class DispatchRepository {
       whereArgs: [customer.id],
     );
 
+    // Auto AMC Visits Deduction: If the customer has an active AMC contract, deduct/increment visitsUsed
+    try {
+      final activeContracts = await db.query(
+        'amc_contracts',
+        where: 'customerId = ? AND (LOWER(status) = ? OR status = ?)',
+        whereArgs: [customer.id, 'active', 'Active'],
+      );
+      for (final contractMap in activeContracts) {
+        final visitsUsed = contractMap['visitsUsed'] as int? ?? 0;
+        final visitsIncluded = contractMap['visitsIncluded'] as int? ?? 0;
+        if (visitsUsed < visitsIncluded) {
+          await db.update(
+            'amc_contracts',
+            {'visitsUsed': visitsUsed + 1},
+            where: 'id = ?',
+            whereArgs: [contractMap['id']],
+          );
+          break; // Increment only one visit on the first active contract
+        }
+      }
+    } catch (e) {
+      // Safe fallback to prevent stopping service completion in case of query errors
+    }
+
     await db.update(
       'service_requests',
       {'customerId': customer.id},

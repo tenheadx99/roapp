@@ -7,7 +7,12 @@ import 'features/settings/bloc/settings_cubit.dart';
 import 'features/settings/models/app_settings.dart';
 import 'features/settings/repositories/settings_repository.dart';
 
-void main() {
+import 'core/utils/db_exporter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Trigger daily silent database backup
+  DbExporter.silentAutoBackup();
   runApp(const MyApp());
 }
 

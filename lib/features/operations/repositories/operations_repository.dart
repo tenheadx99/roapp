@@ -137,7 +137,22 @@ class OperationsRepository {
       whereArgs: technicianId == null ? null : [technicianId],
       orderBy: 'scheduleDate ASC',
     );
-    return maps.map(TechnicianSchedule.fromMap).toList();
+    final list = maps.map(TechnicianSchedule.fromMap).toList();
+    return sortSchedulesByRoute(list);
+  }
+
+  static List<TechnicianSchedule> sortSchedulesByRoute(List<TechnicianSchedule> schedules) {
+    final sorted = List<TechnicianSchedule>.from(schedules);
+    sorted.sort((a, b) {
+      final dateComp = a.scheduleDate.compareTo(b.scheduleDate);
+      if (dateComp != 0) return dateComp;
+      
+      final techComp = a.technicianId.compareTo(b.technicianId);
+      if (techComp != 0) return techComp;
+      
+      return a.routeArea.toLowerCase().compareTo(b.routeArea.toLowerCase());
+    });
+    return sorted;
   }
 
   Future<void> upsertTechnicianSchedule(TechnicianSchedule schedule) async {

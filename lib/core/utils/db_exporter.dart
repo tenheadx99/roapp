@@ -105,4 +105,39 @@ class DbExporter {
     }
     return dir;
   }
+
+  static Future<void> silentAutoBackup() async {
+    try {
+      final latest = await latestBackupFile();
+      if (latest != null && await latest.exists()) {
+        final lastModified = await latest.lastModified();
+        final now = DateTime.now();
+        if (lastModified.year == now.year &&
+            lastModified.month == now.month &&
+            lastModified.day == now.day) {
+          // Backup was already created today
+          return;
+        }
+      }
+
+      final dbFolder = await getDatabasesPath();
+      final dbPath = join(dbFolder, DatabaseHelper.dbName);
+      final dbFile = File(dbPath);
+
+      if (!await dbFile.exists()) {
+        return;
+      }
+
+      final backupDir = await _backupDirectory();
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+      final backupPath = join(backupDir.path, 'roapp-backup-$timestamp.db');
+      final latestPath = join(backupDir.path, 'roapp-backup-latest.db');
+
+      await dbFile.copy(backupPath);
+      await dbFile.copy(latestPath);
+    } catch (e) {
+      // Fail silently to prevent app launch crashing due to filesystem issues
+      print('Silent auto backup failed: $e');
+    }
+  }
 }
