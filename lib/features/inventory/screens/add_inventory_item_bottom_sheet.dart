@@ -37,7 +37,6 @@ class _AddInventoryItemBottomSheetState
   @override
   void initState() {
     super.initState();
-    _loadCategories();
     if (widget.itemToEdit != null) {
       _name = widget.itemToEdit!.name;
       _mrp = widget.itemToEdit!.mrp.toString();
@@ -47,7 +46,12 @@ class _AddInventoryItemBottomSheetState
       _lowStockThreshold = widget.itemToEdit!.lowStockThreshold.toString();
       _selectedCategory = widget.itemToEdit!.category;
       _isEditing = false;
+
+      if (!_categories.contains(_selectedCategory)) {
+        _categories = [..._categories, _selectedCategory];
+      }
     }
+    _loadCategories();
     _loadSuppliers();
   }
 
@@ -74,7 +78,7 @@ class _AddInventoryItemBottomSheetState
         setState(() {
           _categories = available;
           if (!_categories.contains(_selectedCategory)) {
-            _selectedCategory = _categories.first;
+            _categories = [..._categories, _selectedCategory];
           }
         });
       }

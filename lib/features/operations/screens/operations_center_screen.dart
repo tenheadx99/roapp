@@ -55,6 +55,20 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
     final suppliers = await _supplierRepository.getSuppliers();
     final technicians = await _technicianRepository.getTechnicians();
     final invoices = await _operationsRepository.getInvoices();
+    final sortedInvoices = List<Invoice>.from(invoices);
+    sortedInvoices.sort((a, b) {
+      if (a.isOverdue && !b.isOverdue) return -1;
+      if (!a.isOverdue && b.isOverdue) return 1;
+
+      final aUnpaid = a.balanceDue > 0.01;
+      final bUnpaid = b.balanceDue > 0.01;
+      if (aUnpaid && !bUnpaid) return -1;
+      if (!aUnpaid && bUnpaid) return 1;
+
+      final aDue = DateTime.tryParse(a.dueDate) ?? DateTime.now();
+      final bDue = DateTime.tryParse(b.dueDate) ?? DateTime.now();
+      return aDue.compareTo(bDue);
+    });
     final contracts = await _operationsRepository.getContracts();
     final logs = await _operationsRepository.getCommunicationLogs();
     final orders = await _operationsRepository.getPurchaseOrders();
@@ -67,7 +81,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
       _customers = customers;
       _suppliers = suppliers;
       _technicians = technicians;
-      _invoices = invoices;
+      _invoices = sortedInvoices;
       _contracts = contracts;
       _logs = logs;
       _purchaseOrders = orders;
@@ -1277,32 +1291,139 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                     child: _invoices.isEmpty
                         ? const _EmptySection(message: 'No invoices added yet.')
                         : Column(
-                            children: _invoices
-                                .map(
-                                  (invoice) => ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      '${invoice.invoiceNumber} • ${_customerName(invoice.customerId)}',
-                                    ),
-                                    subtitle: Text(
-                                      'Due ${_formatDate(DateTime.tryParse(invoice.dueDate) ?? DateTime.now())} • Balance ${formatRupee(invoice.balanceDue)}',
-                                    ),
-                                    trailing: Text(
-                                      invoice.status.toUpperCase(),
-                                      style: TextStyle(
-                                        color: invoice.isOverdue
-                                            ? Colors.red
-                                            : Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                        fontWeight: FontWeight.w700,
+                            children: _invoices.map((invoice) {
+                              final isOverdue = invoice.isOverdue;
+                              final isUnpaid = invoice.balanceDue > 0.01;
+                              final isDark = Theme.of(context).brightness == Brightness.dark;
+
+                              Color itemBgColor = Colors.transparent;
+                              Color borderColor = Colors.transparent;
+                              Color accentColor = Colors.transparent;
+
+                              if (isOverdue) {
+                                itemBgColor = isDark
+                                    ? const Color(0xFF7F1D1D).withValues(alpha: 0.15)
+                                    : const Color(0xFFFEF2F2);
+                                borderColor = isDark
+                                    ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+                                    : const Color(0xFFFCA5A5);
+                                accentColor = const Color(0xFFEF4444);
+                              } else if (isUnpaid) {
+                                itemBgColor = isDark
+                                    ? const Color(0xFF78350F).withValues(alpha: 0.15)
+                                    : const Color(0xFFFFFBEB);
+                                borderColor = isDark
+                                    ? const Color(0xFFF59E0B).withValues(alpha: 0.3)
+                                    : const Color(0xFFFDE68A);
+                                accentColor = const Color(0xFFF59E0B);
+                              }
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: itemBgColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: borderColor != Colors.transparent
+                                      ? Border.all(color: borderColor)
+                                      : Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (accentColor != Colors.transparent)
+                                        Container(
+                                          width: 4,
+                                          decoration: BoxDecoration(
+                                            color: accentColor,
+                                            borderRadius: const BorderRadius.only(
+                                              topLeft: Radius.circular(12),
+                                              bottomLeft: Radius.circular(12),
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: ListTile(
+                                          contentPadding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          title: Text(
+                                            '${invoice.invoiceNumber} • ${_customerName(invoice.customerId)}',
+                                            style: TextStyle(
+                                              fontWeight: isOverdue || isUnpaid
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            'Due ${_formatDate(DateTime.tryParse(invoice.dueDate) ?? DateTime.now())} • Balance ${formatRupee(invoice.balanceDue)}',
+                                            style: TextStyle(
+                                              color: isOverdue
+                                                  ? (isDark
+                                                      ? const Color(0xFFFCA5A5)
+                                                      : const Color(0xFF991B1B))
+                                                  : (isUnpaid
+                                                      ? (isDark
+                                                          ? const Color(0xFFFDE68A)
+                                                          : const Color(0xFF92400E))
+                                                      : null),
+                                              fontWeight: isOverdue || isUnpaid
+                                                  ? FontWeight.w600
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                          trailing: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isOverdue
+                                                  ? (isDark
+                                                      ? const Color(0xFFEF4444)
+                                                          .withValues(alpha: 0.2)
+                                                      : const Color(0xFFFEE2E2))
+                                                  : (isUnpaid
+                                                      ? (isDark
+                                                          ? const Color(0xFFF59E0B)
+                                                              .withValues(alpha: 0.2)
+                                                          : const Color(0xFFFEF3C7))
+                                                      : (isDark
+                                                          ? const Color(0xFF10B981)
+                                                              .withValues(alpha: 0.2)
+                                                          : const Color(0xFFD1FAE5))),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              invoice.status.toUpperCase(),
+                                              style: TextStyle(
+                                                color: isOverdue
+                                                    ? (isDark
+                                                        ? const Color(0xFFFCA5A5)
+                                                        : const Color(0xFFDC2626))
+                                                    : (isUnpaid
+                                                        ? (isDark
+                                                            ? const Color(0xFFFDE68A)
+                                                            : const Color(0xFFD97706))
+                                                        : (isDark
+                                                            ? const Color(0xFF34D399)
+                                                            : const Color(0xFF059669))),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                          onTap: () =>
+                                              _showInvoiceSheet(existing: invoice),
+                                        ),
                                       ),
-                                    ),
-                                    onTap: () =>
-                                        _showInvoiceSheet(existing: invoice),
+                                    ],
                                   ),
-                                )
-                                .toList(),
+                                ),
+                              );
+                            }).toList(),
                           ),
                   ),
                   const SizedBox(height: 12),
