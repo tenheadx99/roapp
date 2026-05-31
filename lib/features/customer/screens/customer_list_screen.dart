@@ -241,8 +241,10 @@ Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          CustomerProfileScreen(customer: customers[index]),
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<CustomerBloc>(),
+                        child: CustomerProfileScreen(customer: customers[index]),
+                      ),
                     ),
                   );
                 },
@@ -261,8 +263,10 @@ Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        CustomerProfileScreen(customer: customers[index]),
+                    builder: (_) => BlocProvider.value(
+                      value: context.read<CustomerBloc>(),
+                      child: CustomerProfileScreen(customer: customers[index]),
+                    ),
                   ),
                 );
               },

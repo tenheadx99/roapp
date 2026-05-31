@@ -76,6 +76,11 @@ class Customer extends Equatable {
     );
   }
 
+  int get numericId {
+    // Generate a stable 5-digit integer from the string ID
+    return (id.hashCode & 0x7FFFFFFF) % 90000 + 10000;
+  }
+
   @override
   List<Object?> get props => [
     id,

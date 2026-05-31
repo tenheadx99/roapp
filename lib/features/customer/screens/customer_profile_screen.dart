@@ -34,103 +34,133 @@ class CustomerProfileScreen extends StatefulWidget {
 class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   int _selectedTabIndex = 0;
 
+  Customer get customer {
+    try {
+      final state = context.read<CustomerBloc>().state;
+      if (state is CustomerLoaded) {
+        return state.allCustomers.firstWhere(
+          (c) => c.id == widget.customer.id,
+          orElse: () => widget.customer,
+        );
+      }
+    } catch (_) {}
+    return widget.customer;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => DispatchBloc(),
-      child: Builder(
-        builder: (context) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFF5F7F8),
-            appBar: AppBar(
-              title: const Text(
-                'Customer Profile',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+    Widget content = BlocBuilder<CustomerBloc, CustomerState>(
+      builder: (context, customerState) {
+        final currentCustomer = customer;
+        return Scaffold(
+          backgroundColor: const Color(0xFFF5F7F8),
+          appBar: AppBar(
+            title: const Text(
+              'Customer Profile',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              backgroundColor: Colors.white,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              actions: [
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: Colors.black),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => BlocProvider.value(
-                          value: context.read<CustomerBloc>(),
-                          child: AddCustomerBottomSheet(
-                            customerToEdit: widget.customer,
-                          ),
+            ),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            actions: [
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.black),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<CustomerBloc>(),
+                        child: AddCustomerBottomSheet(
+                          customerToEdit: currentCustomer,
                         ),
-                      );
-                    } else if (value == 'delete') {
-                      _showDeleteConfirmation(context);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 20, color: Colors.black54),
-                          SizedBox(width: 8),
-                          Text('Edit Customer'),
-                        ],
                       ),
+                    );
+                  } else if (value == 'delete') {
+                    _showDeleteConfirmation(context);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 20, color: Colors.black54),
+                        SizedBox(width: 8),
+                        Text('Edit Customer'),
+                      ],
                     ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 20, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text(
-                            'Delete Customer',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ],
-                      ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          'Delete Customer',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildProfileCard(context),
+                    const SizedBox(height: 16),
+                    _buildTabBar(),
+                    const SizedBox(height: 16),
+                    _buildLifecyclePanel(),
+                    _selectedTabIndex == 0
+                        ? _buildHistoryList(context)
+                        : _buildUpcomingList(context),
                   ],
                 ),
-              ],
-            ),
-            body: Stack(
-              children: [
-                SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildProfileCard(context),
-                      const SizedBox(height: 16),
-                      _buildTabBar(),
-                      const SizedBox(height: 16),
-                      _buildLifecyclePanel(),
-                      _selectedTabIndex == 0
-                          ? _buildHistoryList(context)
-                          : _buildUpcomingList(context),
-                    ],
-                  ),
-                ),
-                _buildBottomButton(context),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+              _buildBottomButton(context),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      context.read<CustomerBloc>();
+    } catch (_) {
+      content = BlocProvider(
+        create: (_) => CustomerBloc()..add(LoadCustomersRequested()),
+        child: content,
+      );
+    }
+
+    return BlocProvider(
+      create: (context) => DispatchBloc(),
+      child: content,
     );
   }
 
   Widget _buildProfileCard(BuildContext context) {
+    final blocState = context.read<CustomerBloc>().state;
+    final bool hasActiveAmc = customer.status == 'AMC Plan' ||
+        (blocState is CustomerLoaded &&
+            blocState.activeAmcCustomerIds.contains(customer.id));
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Container(
@@ -181,32 +211,61 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             HeaderText(
-                              text: widget.customer.name,
+                              text: customer.name,
                               fontSize: 20,
                             ),
                             SubRegularText(
-                              text: 'Customer ID: #${widget.customer.id}',
+                              text: 'Customer ID: #${customer.numericId}',
                             ),
                             const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'ACTIVE AMC',
-                                style: TextStyle(
-                                  color: Colors.green.shade700,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
+                            if (hasActiveAmc)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF007FFF).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'ACTIVE AMC',
+                                  style: TextStyle(
+                                    color: Color(0xFF007FFF),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: customer.status == 'Service Due'
+                                      ? Colors.red.shade100
+                                      : (customer.status == 'Operational'
+                                          ? Colors.green.shade100
+                                          : Colors.amber.shade100),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  customer.status.toUpperCase(),
+                                  style: TextStyle(
+                                    color: customer.status == 'Service Due'
+                                        ? Colors.red.shade700
+                                        : (customer.status == 'Operational'
+                                            ? Colors.green.shade700
+                                            : Colors.amber.shade700),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -240,7 +299,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         SemiBoldTextView(
-                          text: widget.customer.model,
+                          text: customer.model,
                           fontSize: 14,
                         ),
                       ],
@@ -269,7 +328,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         SemiBoldTextView(
-                          text: widget.customer.installationDate ?? 'N/A',
+                          text: customer.installationDate ?? 'N/A',
                           fontSize: 14,
                         ),
                       ],
@@ -285,7 +344,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                   child: CustomButton(
                     text: 'Call',
                     onPressed: () async {
-                      final url = Uri.parse('tel:${widget.customer.phone}');
+                      final url = Uri.parse('tel:${customer.phone}');
                       if (await canLaunchUrl(url)) {
                         await launchUrl(url);
                       }
@@ -305,13 +364,13 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     text: 'Locate',
                     onPressed: () async {
                       final url = Uri.parse(
-                        'geo:0,0?q=${Uri.encodeComponent(widget.customer.area)}',
+                        'geo:0,0?q=${Uri.encodeComponent(customer.area)}',
                       );
                       if (await canLaunchUrl(url)) {
                         await launchUrl(url);
                       } else {
                         final webUrl = Uri.parse(
-                          'https://maps.google.com/?q=${Uri.encodeComponent(widget.customer.area)}',
+                          'https://maps.google.com/?q=${Uri.encodeComponent(customer.area)}',
                         );
                         if (await canLaunchUrl(webUrl)) {
                           await launchUrl(webUrl);
@@ -332,7 +391,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () async {
-                    String phoneNum = widget.customer.phone.replaceAll(
+                    String phoneNum = customer.phone.replaceAll(
                       RegExp(r'[^\d+]'),
                       '',
                     );
@@ -469,7 +528,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
 
   Widget _buildHistoryList(BuildContext context) {
     return FutureBuilder<List<ServiceHistory>>(
-      future: CustomerRepository().getServiceHistory(widget.customer.id),
+      future: CustomerRepository().getServiceHistory(customer.id),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -861,16 +920,16 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
     OperationsRepository operationsRepo,
   ) async {
     final invoices = await operationsRepo.getInvoices(
-      customerId: widget.customer.id,
+      customerId: customer.id,
     );
     final contracts = await operationsRepo.getContracts(
-      customerId: widget.customer.id,
+      customerId: customer.id,
     );
     final logs = await operationsRepo.getCommunicationLogs(
-      customerId: widget.customer.id,
+      customerId: customer.id,
     );
     final attachments = await operationsRepo.getAttachments(
-      customerId: widget.customer.id,
+      customerId: customer.id,
     );
     return _CustomerLifecycleData(
       invoices: invoices,
@@ -913,10 +972,10 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
               builder: (_) => BlocProvider.value(
                 value: scaffoldContext.read<DispatchBloc>(),
                 child: AddServiceRequestBottomSheet(
-                  initialCustomerId: widget.customer.id,
-                  initialCustomerName: widget.customer.name,
-                  initialAddress: widget.customer.area,
-                  initialModel: widget.customer.model,
+                  initialCustomerId: customer.id,
+                  initialCustomerName: customer.name,
+                  initialAddress: customer.area,
+                  initialModel: customer.model,
                 ),
               ),
             );
@@ -946,7 +1005,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           TextButton(
             onPressed: () {
               context.read<CustomerBloc>().add(
-                DeleteCustomer(widget.customer.id),
+                DeleteCustomer(customer.id),
               );
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(); // Go back to list
@@ -961,8 +1020,8 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   Widget _buildUpcomingList(BuildContext context) {
     return FutureBuilder(
       future: DispatchRepository().getServiceRequestsByCustomer(
-        customerId: widget.customer.id,
-        customerName: widget.customer.name,
+        customerId: customer.id,
+        customerName: customer.name,
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

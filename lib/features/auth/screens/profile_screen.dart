@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:roapp/features/access/screens/app_access_gate.dart';
 import '../../../core/utils/db_exporter.dart';
 import '../../../core/database/database_helper.dart';
@@ -218,7 +220,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _restoreBackup() async {
     try {
-      final message = await DbExporter.restoreLatestBackup();
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+      );
+      if (result == null || result.files.single.path == null) {
+        return; // User cancelled
+      }
+      final selectedFile = File(result.files.single.path!);
+      final message = await DbExporter.restoreFromFile(selectedFile);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -330,77 +339,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 }
               },
               child: const Text('Confirm & Clear'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _loadDemoData() async {
-    bool shouldBackup = context.read<SettingsCubit>().state.autoBackupEnabled;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Load Demo Data'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'This will replace current business records with sample customers, inventory, technicians, dispatch jobs, and previous service history.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-              const SizedBox(height: 20),
-              CheckboxListTile(
-                value: shouldBackup,
-                onChanged: (val) =>
-                    setDialogState(() => shouldBackup = val ?? false),
-                title: const Text(
-                  'Backup current data first',
-                  style: TextStyle(fontSize: 14),
-                ),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  if (shouldBackup) {
-                    final message = await DbExporter.exportDatabase();
-                    if (dialogContext.mounted) {
-                      ScaffoldMessenger.of(
-                        dialogContext,
-                      ).showSnackBar(SnackBar(content: Text(message)));
-                    }
-                  }
-
-                  await DatabaseHelper.instance.loadDemoData();
-
-                  if (!mounted || !dialogContext.mounted) return;
-                  Navigator.pop(dialogContext);
-                  context.read<AuthBloc>().add(AuthStarted());
-                  Navigator.of(this.context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AppAccessGate()),
-                    (route) => false,
-                  );
-                } catch (e) {
-                  if (!dialogContext.mounted) return;
-                  ScaffoldMessenger.of(
-                    dialogContext,
-                  ).showSnackBar(SnackBar(content: Text(e.toString())));
-                }
-              },
-              child: const Text('Load Demo Data'),
             ),
           ],
         ),
@@ -727,23 +665,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: _loadDemoData,
-                      icon: const Icon(Icons.auto_awesome_motion_outlined),
-                      label: const Text('Load Demo Data'),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        side: const BorderSide(color: Color(0xFFBFDBFE)),
-                        foregroundColor: const Color(0xFF007FFF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
                       onPressed: _clearAllData,
                       icon: const Icon(Icons.delete_sweep_outlined),
                       label: const Text('Clear All Data'),
@@ -763,7 +684,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: OutlinedButton.icon(
                       onPressed: _restoreBackup,
                       icon: const Icon(Icons.restore_page_outlined),
-                      label: const Text('Restore Latest Local Backup'),
+                      label: const Text('Restore Database Backup (Pick File)'),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(50),
                         shape: RoundedRectangleBorder(

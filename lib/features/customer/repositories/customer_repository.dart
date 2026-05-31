@@ -13,6 +13,17 @@ class CustomerRepository {
     return maps.map((e) => Customer.fromMap(e)).toList();
   }
 
+  Future<List<String>> getActiveAmcCustomerIds() async {
+    final db = await dbHelper.database;
+    final maps = await db.query(
+      'amc_contracts',
+      columns: ['customerId'],
+      where: 'status = ?',
+      whereArgs: ['active'],
+    );
+    return maps.map((e) => e['customerId'] as String).toList();
+  }
+
   Future<Customer?> getCustomerById(String id) async {
     final db = await dbHelper.database;
     final maps = await db.query('customers', where: 'id = ?', whereArgs: [id]);

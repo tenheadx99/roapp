@@ -23,11 +23,32 @@ class DbExporter {
     await dbFile.copy(backupPath);
     await dbFile.copy(latestPath);
 
+    String? downloadsMsg;
+    try {
+      Directory? downloadsDir;
+      if (Platform.isAndroid) {
+        downloadsDir = Directory('/storage/emulated/0/Download');
+        if (!await downloadsDir.exists()) {
+          downloadsDir = await getDownloadsDirectory();
+        }
+      } else {
+        downloadsDir = await getDownloadsDirectory();
+      }
+
+      if (downloadsDir != null && await downloadsDir.exists()) {
+        final publicBackupPath = join(downloadsDir.path, 'roapp-backup-$timestamp.db');
+        await dbFile.copy(publicBackupPath);
+        downloadsMsg = 'Saved to your Downloads folder: roapp-backup-$timestamp.db';
+      }
+    } catch (_) {
+      // Ignore downloads folder write errors if restricted
+    }
+
     await Share.shareXFiles([
       XFile(backupPath),
     ], subject: 'RO App Database Backup');
 
-    return 'Database backup saved to $backupPath and is ready to share.';
+    return downloadsMsg ?? 'Database backup saved to $backupPath and is ready to share.';
   }
 
   static Future<String> restoreLatestBackup() async {
@@ -42,6 +63,19 @@ class DbExporter {
     await backupFile.copy(dbPath);
 
     return 'Latest backup restored successfully.';
+  }
+
+  static Future<String> restoreFromFile(File selectedFile) async {
+    if (!await selectedFile.exists()) {
+      throw Exception('Selected database file does not exist.');
+    }
+
+    await DatabaseHelper.instance.close();
+    final dbFolder = await getDatabasesPath();
+    final dbPath = join(dbFolder, DatabaseHelper.dbName);
+    await selectedFile.copy(dbPath);
+
+    return 'Database restored successfully from ${basename(selectedFile.path)}.';
   }
 
   static Future<File?> latestBackupFile() async {

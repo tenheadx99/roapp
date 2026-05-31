@@ -59,5 +59,67 @@ void main() {
       );
       expect(fetchedAfterDelete, isNull);
     });
+
+    test('getActiveAmcCustomerIds returns active customer IDs from amc_contracts', () async {
+      final db = await DatabaseHelper.instance.database;
+      await db.delete('amc_contracts');
+      await db.delete('customers');
+
+      final customerId = uuid.v4();
+      final customer = Customer(
+        id: customerId,
+        name: 'AMC Customer',
+        phone: '+91 8888888888',
+        model: 'Aquaguard Geneus',
+        status: 'Operational',
+        lastService: 'Never',
+        area: 'Dwarka',
+      );
+      await customerRepo.addCustomer(customer);
+
+      // Insert active contract
+      await db.insert('amc_contracts', {
+        'id': uuid.v4(),
+        'customerId': customerId,
+        'contractName': 'Premium AMC Plan',
+        'startDate': DateTime.now().toIso8601String(),
+        'endDate': DateTime.now().add(const Duration(days: 365)).toIso8601String(),
+        'visitsIncluded': 4,
+        'visitsUsed': 0,
+        'amount': 3500.0,
+        'status': 'active',
+        'renewalReminderDate': DateTime.now().add(const Duration(days: 330)).toIso8601String(),
+      });
+
+      // Insert expired/inactive contract
+      final inactiveCustomerId = uuid.v4();
+      final inactiveCustomer = Customer(
+        id: inactiveCustomerId,
+        name: 'Expired Customer',
+        phone: '+91 7777777777',
+        model: 'Kent Grand+',
+        status: 'Operational',
+        lastService: 'Never',
+        area: 'Rohini',
+      );
+      await customerRepo.addCustomer(inactiveCustomer);
+
+      await db.insert('amc_contracts', {
+        'id': uuid.v4(),
+        'customerId': inactiveCustomerId,
+        'contractName': 'Expired Plan',
+        'startDate': DateTime.now().subtract(const Duration(days: 365)).toIso8601String(),
+        'endDate': DateTime.now().subtract(const Duration(days: 10)).toIso8601String(),
+        'visitsIncluded': 4,
+        'visitsUsed': 4,
+        'amount': 3000.0,
+        'status': 'expired',
+        'renewalReminderDate': DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
+      });
+
+      final activeIds = await customerRepo.getActiveAmcCustomerIds();
+      expect(activeIds, contains(customerId));
+      expect(activeIds, isNot(contains(inactiveCustomerId)));
+    });
   });
 }

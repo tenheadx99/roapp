@@ -75,12 +75,14 @@ class CustomerLoaded extends CustomerState {
   final List<Customer> filteredCustomers;
   final String searchQuery;
   final String currentFilter;
+  final List<String> activeAmcCustomerIds;
 
   const CustomerLoaded({
     required this.allCustomers,
     required this.filteredCustomers,
     this.searchQuery = '',
     this.currentFilter = 'All Records',
+    this.activeAmcCustomerIds = const [],
   });
 
   @override
@@ -89,6 +91,7 @@ class CustomerLoaded extends CustomerState {
     filteredCustomers,
     searchQuery,
     currentFilter,
+    activeAmcCustomerIds,
   ];
 
   CustomerLoaded copyWith({
@@ -96,12 +99,14 @@ class CustomerLoaded extends CustomerState {
     List<Customer>? filteredCustomers,
     String? searchQuery,
     String? currentFilter,
+    List<String>? activeAmcCustomerIds,
   }) {
     return CustomerLoaded(
       allCustomers: allCustomers ?? this.allCustomers,
       filteredCustomers: filteredCustomers ?? this.filteredCustomers,
       searchQuery: searchQuery ?? this.searchQuery,
       currentFilter: currentFilter ?? this.currentFilter,
+      activeAmcCustomerIds: activeAmcCustomerIds ?? this.activeAmcCustomerIds,
     );
   }
 }
@@ -138,13 +143,15 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
 
     try {
       final customers = await repository.getCustomers();
+      final activeAmcIds = await repository.getActiveAmcCustomerIds();
       final filter = event.initialFilter ?? 'All Records';
-      final filtered = _applyFilters(customers, '', filter);
+      final filtered = _applyFilters(customers, '', filter, activeAmcIds);
       emit(
         CustomerLoaded(
           allCustomers: customers,
           filteredCustomers: filtered,
           currentFilter: filter,
+          activeAmcCustomerIds: activeAmcIds,
         ),
       );
     } catch (e) {
@@ -161,6 +168,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
         currentState.allCustomers,
         query,
         currentState.currentFilter,
+        currentState.activeAmcCustomerIds,
       );
 
       emit(
@@ -180,6 +188,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
         currentState.allCustomers,
         currentState.searchQuery,
         event.filterOption,
+        currentState.activeAmcCustomerIds,
       );
 
       emit(
@@ -195,6 +204,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     List<Customer> customers,
     String query,
     String filterOption,
+    List<String> activeAmcCustomerIds,
   ) {
     return customers.where((c) {
       final matchesQuery =
@@ -209,7 +219,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
       } else if (filterOption == 'Area: West Delhi') {
         matchesFilter = c.area == 'West Delhi';
       } else if (filterOption == 'AMC Plan') {
-        matchesFilter = c.status == 'AMC Plan';
+        matchesFilter = c.status == 'AMC Plan' || activeAmcCustomerIds.contains(c.id);
       }
 
       return matchesQuery && matchesFilter;
