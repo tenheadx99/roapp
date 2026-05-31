@@ -60,6 +60,7 @@ class _InsightsView extends StatelessWidget {
                 children: [
                   _buildTimeRangeFilter(context, state.activeTimeRange),
                   _buildStatsCards(context, state),
+                  _buildProfitBreakdownCard(context, state),
                   _buildSalesTrends(context, state),
                   _buildServiceLoad(context, state),
                   _buildInventoryUsage(context, state),
@@ -157,119 +158,491 @@ class _InsightsView extends StatelessWidget {
     final titleColor = isDark
         ? const Color(0xFFCBD5E1)
         : const Color(0xFF64748B);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'REVENUE',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      Icon(Icons.trending_up, color: Colors.green, size: 18),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    formatRupee(state.revenue.toInt()),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'REVENUE',
+                            style: TextStyle(
+                              color: titleColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const Icon(Icons.trending_up, color: Color(0xFF10B981), size: 18),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        formatRupee(state.revenue.toInt()),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Collected in ${state.activeTimeRange.toLowerCase()}',
+                        style: const TextStyle(
+                          color: Color(0xFF10B981),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Collected in ${state.activeTimeRange.toLowerCase()}',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'NET PROFIT',
+                            style: TextStyle(
+                              color: titleColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF059669), size: 18),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        formatRupee(state.profit.toInt()),
+                        style: const TextStyle(
+                          color: Color(0xFF059669),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Estimated profit margin',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'AVG TAT',
-                        style: TextStyle(
-                          color: titleColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.01),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007FFF).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Icon(Icons.timer, color: Color(0xFF007FFF), size: 18),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${state.avgTat} hrs',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
+                      child: const Icon(
+                        Icons.timer_outlined,
+                        color: Color(0xFF007FFF),
+                        size: 24,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Across ${state.serviceLoad.length} technicians',
-                    style: const TextStyle(
-                      color: Color(0xFF007FFF),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AVERAGE TURNAROUND TIME',
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${state.avgTat} Hours',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                ),
+                Text(
+                  'Across ${state.serviceLoad.length} tech(s)',
+                  style: const TextStyle(
+                    color: Color(0xFF007FFF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfitBreakdownCard(BuildContext context, InsightsLoaded state) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final cardColor = isDark ? theme.cardColor : Colors.white;
+    final borderColor = isDark ? const Color(0xFF1F2937) : Colors.grey.shade100;
+    final titleColor = isDark ? const Color(0xFFCBD5E1) : const Color(0xFF64748B);
+
+    final double profit = state.profit;
+    final double partsProfit = state.partsProfit;
+    final double serviceCharge = state.serviceCharge;
+
+    double partsShare = 0.0;
+    double serviceShare = 0.0;
+    if (profit > 0) {
+      partsShare = (partsProfit / profit).clamp(0.0, 1.0);
+      serviceShare = (serviceCharge / profit).clamp(0.0, 1.0);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF007FFF).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.pie_chart_outline_rounded,
+                        color: Color(0xFF007FFF),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PROFIT REALIZATION',
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Visual Breakdown of Earnings',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Margin: ${(profit > 0 && state.revenue > 0 ? (profit / state.revenue * 100).toStringAsFixed(0) : "0")}%',
+                    style: const TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Segmented Progress Bar
+            if (profit > 0) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 10,
+                  child: Row(
+                    children: [
+                      if (partsShare > 0)
+                        Expanded(
+                          flex: (partsShare * 100).round().clamp(1, 100),
+                          child: Container(
+                            color: const Color(0xFF007FFF), // Parts Profit (Blue)
+                          ),
+                        ),
+                      if (serviceShare > 0)
+                        Expanded(
+                          flex: (serviceShare * 100).round().clamp(1, 100),
+                          child: Container(
+                            color: const Color(0xFF10B981), // Service Charge (Green)
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF007FFF),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Parts Profit (${(partsShare * 100).toStringAsFixed(0)}%)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: titleColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Service Fee (${(serviceShare * 100).toStringAsFixed(0)}%)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: titleColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ] else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'No profit breakdown available for this range.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: titleColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+            // Detailed Breakdown Table/List
+            _buildBreakdownRow(
+              context,
+              'Parts Selling Price',
+              state.partsRevenue,
+              icon: Icons.sell_outlined,
+              iconColor: const Color(0xFF007FFF),
+              isHeading: false,
+            ),
+            const SizedBox(height: 10),
+            _buildBreakdownRow(
+              context,
+              'Parts Supplier Price',
+              -state.partsCost,
+              icon: Icons.inventory_2_outlined,
+              iconColor: Colors.grey,
+              isHeading: false,
+              isNegative: true,
+            ),
+            const Divider(height: 20),
+            _buildBreakdownRow(
+              context,
+              'Item Profit (Selling - Supplier)',
+              state.partsProfit,
+              icon: Icons.trending_up_rounded,
+              iconColor: const Color(0xFF007FFF),
+              isHeading: false,
+              boldValue: true,
+            ),
+            const SizedBox(height: 10),
+            _buildBreakdownRow(
+              context,
+              'Service Charge',
+              state.serviceCharge,
+              icon: Icons.handyman_outlined,
+              iconColor: const Color(0xFF10B981),
+              isHeading: false,
+              boldValue: true,
+            ),
+            const Divider(height: 24, thickness: 1.5),
+            _buildBreakdownRow(
+              context,
+              'Total Profit (Item Profit + Service)',
+              state.profit,
+              icon: Icons.account_balance_wallet,
+              iconColor: const Color(0xFF10B981),
+              isHeading: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakdownRow(
+    BuildContext context,
+    String label,
+    double value, {
+    required IconData icon,
+    required Color iconColor,
+    required bool isHeading,
+    bool isNegative = false,
+    bool boldValue = false,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final valueStyle = TextStyle(
+      fontSize: isHeading ? 16 : 13,
+      fontWeight: isHeading || boldValue ? FontWeight.bold : FontWeight.w500,
+      color: isHeading
+          ? const Color(0xFF10B981)
+          : (isNegative
+              ? (isDark ? Colors.redAccent.shade100 : Colors.red.shade700)
+              : (isDark ? Colors.white : const Color(0xFF0F172A))),
+    );
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: isHeading ? 18 : 16, color: iconColor),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: isHeading ? 14 : 12,
+                fontWeight: isHeading ? FontWeight.bold : FontWeight.w500,
+                color: isHeading
+                    ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                    : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          formatRupee(value.toInt().abs()),
+          style: valueStyle,
+        ),
+      ],
     );
   }
 

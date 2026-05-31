@@ -27,6 +27,7 @@ class _AddInventoryItemBottomSheetState
   String _mrp = '';
   String _supplier = '';
   String _price = '';
+  String _supplierPrice = '';
   String _stock = '';
   String _lowStockThreshold = '';
   String _selectedCategory = 'Filters';
@@ -42,6 +43,7 @@ class _AddInventoryItemBottomSheetState
       _mrp = widget.itemToEdit!.mrp.toString();
       _supplier = widget.itemToEdit!.supplier;
       _price = widget.itemToEdit!.price.toString();
+      _supplierPrice = widget.itemToEdit!.supplierPrice.toString();
       _stock = widget.itemToEdit!.stock.toString();
       _lowStockThreshold = widget.itemToEdit!.lowStockThreshold.toString();
       _selectedCategory = widget.itemToEdit!.category;
@@ -142,8 +144,8 @@ class _AddInventoryItemBottomSheetState
     }
 
     final mrpValue = double.tryParse(_mrp.trim()) ?? 0.0;
-
     final priceValue = double.tryParse(_price.trim()) ?? 0.0;
+    final supplierPriceValue = double.tryParse(_supplierPrice.trim()) ?? 0.0;
     final stockValue = int.tryParse(_stock.trim()) ?? 0;
     final thresholdValue = int.tryParse(_lowStockThreshold.trim()) ?? 0;
 
@@ -155,6 +157,7 @@ class _AddInventoryItemBottomSheetState
           ? _supplier.trim()
           : 'Unknown Supplier',
       price: priceValue,
+      supplierPrice: supplierPriceValue,
       stock: stockValue,
       lowStockThreshold: thresholdValue,
       category: _selectedCategory,
@@ -238,24 +241,55 @@ class _AddInventoryItemBottomSheetState
               prefixIcon: const Icon(Icons.inventory_2_outlined),
             ),
             const SizedBox(height: 16),
-            CustomTextField(
-              initialValue: _mrp,
-              onChanged: (val) => _mrp = val,
-              hintText: "MRP",
-              readOnly: !_isEditing,
-              prefixIcon: const Icon(Icons.price_check),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomTextField(
+                    initialValue: _mrp,
+                    onChanged: (val) => _mrp = val,
+                    hintText: "MRP",
+                    readOnly: !_isEditing,
+                    prefixIcon: const Icon(Icons.price_check),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: CustomTextField(
+                    initialValue: _price,
+                    onChanged: (val) => _price = val,
+                    hintText: "Selling Price",
+                    readOnly: !_isEditing,
+                    prefixIcon: const Icon(Icons.sell_outlined),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            CustomAutocompleteField(
-              initialValue: _supplier,
-              options: _existingSuppliers,
-              onChanged: (val) => _supplier = val,
-              hintText: "Supplier Name",
-              readOnly: !_isEditing,
-              prefixIcon: const Icon(Icons.business_outlined),
+            Row(
+              children: [
+                Expanded(
+                  child: CustomAutocompleteField(
+                    initialValue: _supplier,
+                    options: _existingSuppliers,
+                    onChanged: (val) => _supplier = val,
+                    hintText: "Supplier Name",
+                    readOnly: !_isEditing,
+                    prefixIcon: const Icon(Icons.business_outlined),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: CustomTextField(
+                    initialValue: _supplierPrice,
+                    onChanged: (val) => _supplierPrice = val,
+                    hintText: "Supplier Price",
+                    readOnly: !_isEditing,
+                    prefixIcon: const Icon(Icons.attach_money),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-
             Row(
               children: [
                 Expanded(
@@ -279,20 +313,9 @@ class _AddInventoryItemBottomSheetState
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                  child: CustomTextField(
-                    initialValue: _price,
-                    onChanged: (val) => _price = val,
-                    hintText: "Price",
-                    readOnly: !_isEditing,
-                    prefixIcon: const Icon(Icons.attach_money),
-                  ),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

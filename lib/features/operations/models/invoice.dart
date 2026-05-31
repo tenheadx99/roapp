@@ -8,6 +8,7 @@ class Invoice extends Equatable {
   final String dueDate;
   final double totalAmount;
   final double paidAmount;
+  final double supplierPrice;
   final String status;
   final String notes;
 
@@ -19,6 +20,7 @@ class Invoice extends Equatable {
     required this.dueDate,
     required this.totalAmount,
     required this.paidAmount,
+    this.supplierPrice = 0.0,
     required this.status,
     required this.notes,
   });
@@ -40,6 +42,7 @@ class Invoice extends Equatable {
       dueDate: map['dueDate'] as String,
       totalAmount: (map['totalAmount'] as num).toDouble(),
       paidAmount: (map['paidAmount'] as num).toDouble(),
+      supplierPrice: (map['supplierPrice'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] as String,
       notes: map['notes'] as String? ?? '',
     );
@@ -54,6 +57,7 @@ class Invoice extends Equatable {
       'dueDate': dueDate,
       'totalAmount': totalAmount,
       'paidAmount': paidAmount,
+      'supplierPrice': supplierPrice,
       'status': status,
       'notes': notes,
     };
@@ -68,6 +72,7 @@ class Invoice extends Equatable {
     dueDate,
     totalAmount,
     paidAmount,
+    supplierPrice,
     status,
     notes,
   ];

@@ -282,7 +282,7 @@ class OperationsRepository {
     final settingsRepository = SettingsRepository();
     final appSettings = await settingsRepository.loadSettings();
 
-    // Look up the MRP values for each item in the service request
+    // Look up the MRP and Supplier Price values for each item in the service request
     final db = await dbHelper.database;
     final itemIds = request.inventoryItems
         .map((e) => e.inventoryItemId)
@@ -291,16 +291,19 @@ class OperationsRepository {
         .toList();
     
     final mrpMap = <String, double>{};
+    final priceMap = <String, double>{};
     if (itemIds.isNotEmpty) {
       final placeholders = List.filled(itemIds.length, '?').join(', ');
       final results = await db.rawQuery(
-        'SELECT id, mrp FROM inventory WHERE id IN ($placeholders)',
+        'SELECT id, mrp, supplierPrice FROM inventory WHERE id IN ($placeholders)',
         itemIds,
       );
       for (final row in results) {
         final id = row['id'] as String;
         final mrp = (row['mrp'] as num).toDouble();
+        final price = (row['supplierPrice'] as num?)?.toDouble() ?? 0.0;
         mrpMap[id] = mrp;
+        priceMap[id] = price;
       }
     }
 
@@ -319,6 +322,12 @@ class OperationsRepository {
 
     // Sync invoice to database so already completed services get added immediately upon downloading/viewing!
     if (customer != null) {
+      double supplierPriceSum = 0.0;
+      for (final item in request.inventoryItems) {
+        final itemPrice = priceMap[item.inventoryItemId] ?? 0.0;
+        supplierPriceSum += itemPrice * item.quantity;
+      }
+
       final invoice = Invoice(
         id: 'inv-${request.id}',
         customerId: customer.id,
@@ -327,6 +336,7 @@ class OperationsRepository {
         dueDate: completedAt.toIso8601String(),
         totalAmount: request.totalAmount,
         paidAmount: request.totalAmount,
+        supplierPrice: supplierPriceSum,
         status: 'paid',
         notes:
             'Auto-generated invoice from completed service request: ${request.type}.',

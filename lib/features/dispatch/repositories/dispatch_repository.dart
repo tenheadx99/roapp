@@ -236,6 +236,29 @@ class DispatchRepository {
       whereArgs: [request.id],
     );
 
+    // Fetch total supplier price for request's items
+    double supplierPrice = 0.0;
+    final itemIds = request.inventoryItems
+        .map((e) => e.inventoryItemId)
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toList();
+    if (itemIds.isNotEmpty) {
+      final placeholders = List.filled(itemIds.length, '?').join(', ');
+      final results = await db.rawQuery(
+        'SELECT id, supplierPrice FROM inventory WHERE id IN ($placeholders)',
+        itemIds,
+      );
+      final priceMap = {
+        for (final row in results)
+          row['id'] as String: (row['supplierPrice'] as num?)?.toDouble() ?? 0.0
+      };
+      for (final item in request.inventoryItems) {
+        final pCost = priceMap[item.inventoryItemId] ?? 0.0;
+        supplierPrice += pCost * item.quantity;
+      }
+    }
+
     final existingInvoice = await db.query(
       'invoices',
       where: 'id = ?',
@@ -258,6 +281,7 @@ class DispatchRepository {
       'dueDate': completionTime.toIso8601String(),
       'totalAmount': request.totalAmount,
       'paidAmount': request.totalAmount,
+      'supplierPrice': supplierPrice,
       'status': 'paid',
       'notes':
           'Auto-generated invoice from completed service request: ${request.type}.',

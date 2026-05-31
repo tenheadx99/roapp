@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 9;
+  static const int dbVersion = 11;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -100,6 +100,7 @@ CREATE TABLE inventory (
   mrp $doubleType,
   supplier $textType,
   price $doubleType,
+  supplierPrice $doubleType,
   stock $intType,
   lowStockThreshold $intType,
   category $textType
@@ -184,6 +185,7 @@ CREATE TABLE invoices (
   dueDate $textType,
   totalAmount $doubleType,
   paidAmount $doubleType,
+  supplierPrice $doubleType,
   status $textType,
   notes $textNullType,
   FOREIGN KEY (customerId) REFERENCES customers (id) ON DELETE CASCADE
@@ -479,6 +481,28 @@ CREATE TABLE IF NOT EXISTS service_attachments (
         db,
         9,
         'Tracked service completion timestamps and linked service history to service requests.',
+      );
+    }
+
+    if (oldVersion < 10) {
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN supplierPrice REAL NOT NULL DEFAULT 0.0',
+      );
+      await _recordMigration(
+        db,
+        10,
+        'Added supplierPrice column to invoices.',
+      );
+    }
+
+    if (oldVersion < 11) {
+      await db.execute(
+        'ALTER TABLE inventory ADD COLUMN supplierPrice REAL NOT NULL DEFAULT 0.0',
+      );
+      await _recordMigration(
+        db,
+        11,
+        'Added supplierPrice column to inventory.',
       );
     }
 

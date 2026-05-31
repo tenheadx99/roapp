@@ -223,12 +223,15 @@ class DummyData {
       // Add a variant identifier to ensure unique names in our mind (though not strictly enforced by SQLite)
       name += ' - Var${_random.nextInt(1000)}';
 
+      final supplierPrice = price * 0.7;
+
       await db.insert('inventory', {
         'id': 'inv-${_uuid.v4()}',
         'name': name,
         'mrp': num.parse(mrp.toStringAsFixed(2)),
         'supplier': _randomElement(_supplierNames),
         'price': num.parse(price.toStringAsFixed(2)),
+        'supplierPrice': num.parse(supplierPrice.toStringAsFixed(2)),
         'stock': _random.nextInt(100) + 10,
         'lowStockThreshold': 15,
         'category': category,

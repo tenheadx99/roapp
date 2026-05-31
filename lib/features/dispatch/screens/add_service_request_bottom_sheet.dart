@@ -178,6 +178,7 @@ class _AddServiceRequestBottomSheetState
     String? selectedInventoryId = hasExistingInventoryMatch
         ? existingItem?.inventoryItemId
         : null;
+    String searchQuery = '';
     final nameController = TextEditingController(
       text: existingItem?.name ?? '',
     );
@@ -198,6 +199,16 @@ class _AddServiceRequestBottomSheetState
                 .cast<InventoryItem?>()
                 .firstOrNull;
 
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            final borderColor = isDark ? const Color(0xFF1F2937) : Colors.grey.shade200;
+            final titleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+            final filteredOptions = _inventoryOptions.where((item) {
+              return item.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+                     item.category.toLowerCase().contains(searchQuery.toLowerCase());
+            }).toList();
+
             return AlertDialog(
               title: Text(
                 existingItem == null ? 'Add Inventory Item' : 'Edit Item',
@@ -206,44 +217,140 @@ class _AddServiceRequestBottomSheetState
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    DropdownButtonFormField<String>(
-                      value: selectedInventoryId,
-                      isExpanded: true,
-                      decoration: _dropdownDecoration(
-                        labelText: 'Pick from inventory',
-                      ),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: '',
-                          child: Text('Custom item'),
-                        ),
-                        ..._inventoryOptions.map(
-                          (item) => DropdownMenuItem<String>(
-                            value: item.id,
-                            child: Text(
-                              '${item.name} • ${item.stock} in stock',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
+                    CustomTextField(
+                      prefixIcon: const Icon(Icons.search, color: Color(0xFF007FFF)),
+                      hintText: 'Search inventory items...',
+                      onChanged: (val) {
                         setDialogState(() {
-                          selectedInventoryId = (value ?? '').trim().isEmpty
-                              ? null
-                              : value;
-                          final chosen = _inventoryOptions
-                              .where((item) => item.id == selectedInventoryId)
-                              .cast<InventoryItem?>()
-                              .firstOrNull;
-                          if (chosen != null) {
-                            nameController.text = chosen.name;
-                            priceController.text = chosen.price.toStringAsFixed(
-                              2,
-                            );
-                          }
+                          searchQuery = val;
                         });
                       },
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF131D31) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: filteredOptions.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No matching items found.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF64748B),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: Column(
+                                children: filteredOptions.map((item) {
+                                  final isSelected = selectedInventoryId == item.id;
+                                  return InkWell(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        selectedInventoryId = item.id;
+                                        nameController.text = item.name;
+                                        priceController.text = item.price.toStringAsFixed(2);
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? const Color(0xFF007FFF).withValues(alpha: 0.1)
+                                            : Colors.transparent,
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: borderColor,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item.name,
+                                                  style: TextStyle(
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : const Color(0xFF0F172A),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  '${item.category} • ${item.stock} in stock',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: titleColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Text(
+                                            formatRupee(item.price),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: isSelected
+                                                  ? const Color(0xFF007FFF)
+                                                  : titleColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            selectedInventoryId == null
+                                ? 'Selected: Custom Item'
+                                : 'Selected: ${selectedInventory?.name}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF007FFF),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (selectedInventoryId != null)
+                          TextButton(
+                            onPressed: () {
+                              setDialogState(() {
+                                selectedInventoryId = null;
+                                nameController.clear();
+                                priceController.text = '0.00';
+                              });
+                            },
+                            child: const Text(
+                              'Reset to Custom',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     CustomTextField(
@@ -340,10 +447,6 @@ class _AddServiceRequestBottomSheetState
         );
       },
     );
-
-    nameController.dispose();
-    quantityController.dispose();
-    priceController.dispose();
   }
 
   String _formatScheduleLabel(DateTime date) {

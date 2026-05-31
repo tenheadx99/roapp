@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../customer/repositories/customer_repository.dart';
+import '../../dispatch/models/service_request.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../operations/repositories/operations_repository.dart';
 import '../../supplier/repositories/supplier_repository.dart';
@@ -40,6 +41,7 @@ class InsightsLoading extends InsightsState {}
 class InsightsLoaded extends InsightsState {
   final String activeTimeRange;
   final double revenue;
+  final double profit;
   final double avgTat;
   final Map<String, double> salesTrends;
   final List<Map<String, dynamic>> serviceLoad;
@@ -50,10 +52,15 @@ class InsightsLoaded extends InsightsState {
   final List<Map<String, dynamic>> supplierPerformance;
   final Map<String, int> monthlyServiceVolume;
   final int slaBreaches;
+  final double partsRevenue;
+  final double partsCost;
+  final double partsProfit;
+  final double serviceCharge;
 
   const InsightsLoaded({
     required this.activeTimeRange,
     required this.revenue,
+    required this.profit,
     required this.avgTat,
     required this.salesTrends,
     required this.serviceLoad,
@@ -64,12 +71,17 @@ class InsightsLoaded extends InsightsState {
     required this.supplierPerformance,
     required this.monthlyServiceVolume,
     required this.slaBreaches,
+    this.partsRevenue = 0.0,
+    this.partsCost = 0.0,
+    this.partsProfit = 0.0,
+    this.serviceCharge = 0.0,
   });
 
   @override
   List<Object?> get props => [
     activeTimeRange,
     revenue,
+    profit,
     avgTat,
     salesTrends,
     serviceLoad,
@@ -80,11 +92,16 @@ class InsightsLoaded extends InsightsState {
     supplierPerformance,
     monthlyServiceVolume,
     slaBreaches,
+    partsRevenue,
+    partsCost,
+    partsProfit,
+    serviceCharge,
   ];
 
   InsightsLoaded copyWith({
     String? activeTimeRange,
     double? revenue,
+    double? profit,
     double? avgTat,
     Map<String, double>? salesTrends,
     List<Map<String, dynamic>>? serviceLoad,
@@ -95,10 +112,15 @@ class InsightsLoaded extends InsightsState {
     List<Map<String, dynamic>>? supplierPerformance,
     Map<String, int>? monthlyServiceVolume,
     int? slaBreaches,
+    double? partsRevenue,
+    double? partsCost,
+    double? partsProfit,
+    double? serviceCharge,
   }) {
     return InsightsLoaded(
       activeTimeRange: activeTimeRange ?? this.activeTimeRange,
       revenue: revenue ?? this.revenue,
+      profit: profit ?? this.profit,
       avgTat: avgTat ?? this.avgTat,
       salesTrends: salesTrends ?? this.salesTrends,
       serviceLoad: serviceLoad ?? this.serviceLoad,
@@ -109,6 +131,10 @@ class InsightsLoaded extends InsightsState {
       supplierPerformance: supplierPerformance ?? this.supplierPerformance,
       monthlyServiceVolume: monthlyServiceVolume ?? this.monthlyServiceVolume,
       slaBreaches: slaBreaches ?? this.slaBreaches,
+      partsRevenue: partsRevenue ?? this.partsRevenue,
+      partsCost: partsCost ?? this.partsCost,
+      partsProfit: partsProfit ?? this.partsProfit,
+      serviceCharge: serviceCharge ?? this.serviceCharge,
     );
   }
 }
@@ -219,12 +245,78 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         ];
       }
 
-      final revenue =
-          historiesInRange.fold<double>(0, (sum, entry) => sum + entry.cost) +
-          invoicesInRange.fold<double>(
-            0,
-            (sum, invoice) => sum + invoice.paidAmount,
-          );
+      double totalRevenue = 0.0;
+      double totalPartsRevenue = 0.0;
+      double totalPartsCost = 0.0;
+      double totalServiceCharge = 0.0;
+
+      final processedRequestIds = <String>{};
+      for (final invoice in invoicesInRange) {
+        totalRevenue += invoice.paidAmount;
+        totalPartsCost += invoice.supplierPrice;
+
+        final requestId = invoice.id.startsWith('inv-') ? invoice.id.substring(4) : null;
+        ServiceRequest? matchingRequest;
+        if (requestId != null) {
+          processedRequestIds.add(requestId);
+          try {
+            matchingRequest = requests.firstWhere((r) => r.id == requestId);
+          } catch (_) {}
+        }
+
+        if (matchingRequest != null) {
+          final partsSelPrice = matchingRequest.inventoryItems.fold<double>(0, (sum, item) => sum + item.lineTotal);
+          totalPartsRevenue += partsSelPrice;
+          final svcCharge = invoice.totalAmount - partsSelPrice;
+          totalServiceCharge += svcCharge > 0 ? svcCharge : 0.0;
+        } else {
+          if (invoice.supplierPrice > 0) {
+            totalPartsRevenue += invoice.supplierPrice;
+            final svcCharge = invoice.totalAmount - invoice.supplierPrice;
+            totalServiceCharge += svcCharge > 0 ? svcCharge : 0.0;
+          } else {
+            totalServiceCharge += invoice.totalAmount;
+          }
+        }
+      }
+
+      for (final entry in historiesInRange) {
+        if (entry.serviceRequestId != null && processedRequestIds.contains(entry.serviceRequestId)) {
+          continue;
+        }
+        final hasInvoiceInDb = invoices.any((inv) => inv.id == 'inv-${entry.serviceRequestId}');
+        if (hasInvoiceInDb) {
+          continue;
+        }
+
+        totalRevenue += entry.cost;
+
+        ServiceRequest? matchingRequest;
+        if (entry.serviceRequestId != null) {
+          try {
+            matchingRequest = requests.firstWhere((r) => r.id == entry.serviceRequestId);
+          } catch (_) {}
+        }
+
+        if (matchingRequest != null) {
+          final partsSelPrice = matchingRequest.inventoryItems.fold<double>(0, (sum, item) => sum + item.lineTotal);
+          totalPartsRevenue += partsSelPrice;
+          double estSupplierCost = 0.0;
+          for (final item in matchingRequest.inventoryItems) {
+            estSupplierCost += item.unitPrice * 0.7 * item.quantity;
+          }
+          totalPartsCost += estSupplierCost;
+          final svcCharge = entry.cost - partsSelPrice;
+          totalServiceCharge += svcCharge > 0 ? svcCharge : 0.0;
+        } else {
+          totalServiceCharge += entry.cost;
+        }
+      }
+
+      final partsProfit = totalPartsRevenue - totalPartsCost;
+      final revenue = totalRevenue;
+      final profit = partsProfit + totalServiceCharge;
+
       final openRequests = requests
           .where((request) => request.status != 'completed')
           .length;
@@ -242,13 +334,6 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         'Sun': 0,
       };
 
-      for (final entry in historiesInRange) {
-        final date = _parseHistoryDate(entry.date);
-        if (date == null) continue;
-        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        final label = labels[date.weekday - 1];
-        salesTrends[label] = (salesTrends[label] ?? 0) + entry.cost;
-      }
       for (final invoice in invoicesInRange) {
         final date = DateTime.tryParse(invoice.issueDate);
         if (date == null) continue;
@@ -256,16 +341,51 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         final label = labels[date.weekday - 1];
         salesTrends[label] = (salesTrends[label] ?? 0) + invoice.paidAmount;
       }
+      for (final entry in historiesInRange) {
+        if (entry.serviceRequestId != null && processedRequestIds.contains(entry.serviceRequestId)) {
+          continue;
+        }
+        final hasInvoiceInDb = invoices.any((inv) => inv.id == 'inv-${entry.serviceRequestId}');
+        if (hasInvoiceInDb) {
+          continue;
+        }
+        final date = _parseHistoryDate(entry.date);
+        if (date == null) continue;
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        final label = labels[date.weekday - 1];
+        salesTrends[label] = (salesTrends[label] ?? 0) + entry.cost;
+      }
 
       final revenueByTech = <String, double>{};
       final topParts = <String, int>{};
       final repeatCustomers = <String, int>{};
       final monthlyVolume = <String, int>{};
 
+      for (final invoice in invoicesInRange) {
+        final requestId = invoice.id.startsWith('inv-') ? invoice.id.substring(4) : null;
+        ServiceRequest? matchingRequest;
+        if (requestId != null) {
+          try {
+            matchingRequest = requests.firstWhere((r) => r.id == requestId);
+          } catch (_) {}
+        }
+        final techName = matchingRequest?.technicianName ?? 'Office';
+        revenueByTech[techName] = (revenueByTech[techName] ?? 0) + invoice.paidAmount;
+      }
       for (final entry in historiesInRange) {
-        final date = _parseHistoryDate(entry.date);
+        if (entry.serviceRequestId != null && processedRequestIds.contains(entry.serviceRequestId)) {
+          continue;
+        }
+        final hasInvoiceInDb = invoices.any((inv) => inv.id == 'inv-${entry.serviceRequestId}');
+        if (hasInvoiceInDb) {
+          continue;
+        }
         revenueByTech[entry.technicianName] =
             (revenueByTech[entry.technicianName] ?? 0) + entry.cost;
+      }
+
+      for (final entry in historiesInRange) {
+        final date = _parseHistoryDate(entry.date);
         repeatCustomers[entry.customerId] =
             (repeatCustomers[entry.customerId] ?? 0) + 1;
         final parts = _parsePartsUsage(entry.partsReplaced);
@@ -342,6 +462,7 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         InsightsLoaded(
           activeTimeRange: activeRange,
           revenue: revenue,
+          profit: profit,
           avgTat: double.parse(avgTat.toStringAsFixed(1)),
           salesTrends: salesTrends,
           serviceLoad: serviceLoad,
@@ -352,6 +473,10 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
           supplierPerformance: supplierPerformance.take(5).toList(),
           monthlyServiceVolume: monthlyVolume,
           slaBreaches: slaBreaches,
+          partsRevenue: totalPartsRevenue,
+          partsCost: totalPartsCost,
+          partsProfit: partsProfit,
+          serviceCharge: totalServiceCharge,
         ),
       );
     } catch (e) {

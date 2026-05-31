@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -141,6 +142,9 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
     final paidController = TextEditingController(
       text: existing?.paidAmount.toStringAsFixed(0) ?? '0',
     );
+    final supplierPriceController = TextEditingController(
+      text: existing?.supplierPrice.toStringAsFixed(0) ?? '',
+    );
     final notesController = TextEditingController(text: existing?.notes ?? '');
     String selectedCustomerId = existing?.customerId ?? _customers.first.id;
     DateTime issueDate =
@@ -202,8 +206,36 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                           ),
                         ),
                       ],
-                      onChanged: (req) {
+                      onChanged: (req) async {
                         if (req == null) return;
+
+                        double computedSupplierPrice = 0.0;
+                        try {
+                          final db = await DatabaseHelper.instance.database;
+                          final itemIds = req.inventoryItems
+                              .map((e) => e.inventoryItemId)
+                              .whereType<String>()
+                              .where((id) => id.isNotEmpty)
+                              .toList();
+                          if (itemIds.isNotEmpty) {
+                            final placeholders = List.filled(itemIds.length, '?').join(', ');
+                            final results = await db.rawQuery(
+                              'SELECT id, supplierPrice FROM inventory WHERE id IN ($placeholders)',
+                              itemIds,
+                            );
+                            final priceMap = {
+                              for (final row in results)
+                                row['id'] as String: (row['supplierPrice'] as num?)?.toDouble() ?? 0.0
+                            };
+                            for (final item in req.inventoryItems) {
+                              final pCost = priceMap[item.inventoryItemId] ?? 0.0;
+                              computedSupplierPrice += pCost * item.quantity;
+                            }
+                          }
+                        } catch (e) {
+                          // ignore
+                        }
+
                         setSheetState(() {
                           final matchingCustomer = _customers.firstWhere(
                             (c) =>
@@ -214,6 +246,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                           selectedCustomerId = matchingCustomer.id;
                           totalController.text = req.totalAmount
                               .toStringAsFixed(0);
+                          supplierPriceController.text = computedSupplierPrice.toStringAsFixed(0);
                           paidController.text = req.totalAmount.toStringAsFixed(
                             0,
                           );
@@ -266,15 +299,24 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: TextFormField(
-                          controller: paidController,
+                          controller: supplierPriceController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Paid Amount',
+                            labelText: 'Supplier Price',
                             border: OutlineInputBorder(),
                           ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: paidController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Paid Amount',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -330,6 +372,9 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                         totalController.text.trim(),
                       );
                       final paid = double.tryParse(paidController.text.trim());
+                      final supplierPrice = double.tryParse(
+                        supplierPriceController.text.trim(),
+                      ) ?? 0.0;
                       if (total == null || total <= 0) {
                         _showMessage('Enter a valid invoice amount.');
                         return;
@@ -368,6 +413,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                         dueDate: dueDate.toIso8601String(),
                         totalAmount: total,
                         paidAmount: paid,
+                        supplierPrice: supplierPrice,
                         status: paid >= total
                             ? 'paid'
                             : (dueDate.isBefore(DateTime.now())
