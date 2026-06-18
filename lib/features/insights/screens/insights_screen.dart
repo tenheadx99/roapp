@@ -58,7 +58,7 @@ class _InsightsView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTimeRangeFilter(context, state.activeTimeRange),
+                  _buildTimeRangeFilter(context, state),
                   _buildStatsCards(context, state),
                   _buildProfitBreakdownCard(context, state),
                   _buildSalesTrends(context, state),
@@ -76,10 +76,11 @@ class _InsightsView extends StatelessWidget {
     );
   }
 
-  Widget _buildTimeRangeFilter(BuildContext context, String activeRange) {
+  Widget _buildTimeRangeFilter(BuildContext context, InsightsLoaded state) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final ranges = ['Today', 'This Week', 'This Month', 'Custom'];
+    final ranges = ['Today', 'This Week', 'This Month', 'All Time', 'Custom'];
+    final activeRange = state.activeTimeRange;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -88,8 +89,35 @@ class _InsightsView extends StatelessWidget {
         children: ranges.map((range) {
           final isActive = range == activeRange;
           return GestureDetector(
-            onTap: () {
-              context.read<InsightsBloc>().add(ChangeTimeRange(range));
+            onTap: () async {
+              if (range == 'Custom') {
+                final initialDateRange = state.customStartDate != null &&
+                        state.customEndDate != null
+                    ? DateTimeRange(
+                        start: state.customStartDate!,
+                        end: state.customEndDate!,
+                      )
+                    : null;
+                final pickedRange = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 365)),
+                  initialDateRange: initialDateRange,
+                );
+                if (pickedRange != null) {
+                  if (context.mounted) {
+                    context.read<InsightsBloc>().add(
+                          ChangeTimeRange(
+                            'Custom',
+                            customStartDate: pickedRange.start,
+                            customEndDate: pickedRange.end,
+                          ),
+                        );
+                  }
+                }
+              } else {
+                context.read<InsightsBloc>().add(ChangeTimeRange(range));
+              }
             },
             child: Container(
               margin: const EdgeInsets.only(right: 8),
@@ -208,7 +236,11 @@ class _InsightsView extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Collected in ${state.activeTimeRange.toLowerCase()}',
+                        state.activeTimeRange == 'Custom' &&
+                                state.customStartDate != null &&
+                                state.customEndDate != null
+                            ? 'Collected between ${_formatDateOnly(state.customStartDate!)} - ${_formatDateOnly(state.customEndDate!)}'
+                            : 'Collected in ${state.activeTimeRange.toLowerCase()}',
                         style: const TextStyle(
                           color: Color(0xFF10B981),
                           fontSize: 10,
@@ -1189,6 +1221,24 @@ class _InsightsView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDateOnly(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }
 

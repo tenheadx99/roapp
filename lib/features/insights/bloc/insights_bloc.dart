@@ -18,12 +18,18 @@ abstract class InsightsEvent extends Equatable {
 class LoadInsightsData extends InsightsEvent {}
 
 class ChangeTimeRange extends InsightsEvent {
-  final String range; // 'Today', 'This Week', 'This Month', 'Custom'
+  final String range; // 'Today', 'This Week', 'This Month', 'All Time', 'Custom'
+  final DateTime? customStartDate;
+  final DateTime? customEndDate;
 
-  const ChangeTimeRange(this.range);
+  const ChangeTimeRange(
+    this.range, {
+    this.customStartDate,
+    this.customEndDate,
+  });
 
   @override
-  List<Object?> get props => [range];
+  List<Object?> get props => [range, customStartDate, customEndDate];
 }
 
 // --- States ---
@@ -40,6 +46,8 @@ class InsightsLoading extends InsightsState {}
 
 class InsightsLoaded extends InsightsState {
   final String activeTimeRange;
+  final DateTime? customStartDate;
+  final DateTime? customEndDate;
   final double revenue;
   final double profit;
   final double avgTat;
@@ -59,6 +67,8 @@ class InsightsLoaded extends InsightsState {
 
   const InsightsLoaded({
     required this.activeTimeRange,
+    this.customStartDate,
+    this.customEndDate,
     required this.revenue,
     required this.profit,
     required this.avgTat,
@@ -80,6 +90,8 @@ class InsightsLoaded extends InsightsState {
   @override
   List<Object?> get props => [
     activeTimeRange,
+    customStartDate,
+    customEndDate,
     revenue,
     profit,
     avgTat,
@@ -100,6 +112,8 @@ class InsightsLoaded extends InsightsState {
 
   InsightsLoaded copyWith({
     String? activeTimeRange,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
     double? revenue,
     double? profit,
     double? avgTat,
@@ -119,6 +133,8 @@ class InsightsLoaded extends InsightsState {
   }) {
     return InsightsLoaded(
       activeTimeRange: activeTimeRange ?? this.activeTimeRange,
+      customStartDate: customStartDate ?? this.customStartDate,
+      customEndDate: customEndDate ?? this.customEndDate,
       revenue: revenue ?? this.revenue,
       profit: profit ?? this.profit,
       avgTat: avgTat ?? this.avgTat,
@@ -156,20 +172,27 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
   }
 
   void _onLoadData(LoadInsightsData event, Emitter<InsightsState> emit) async {
-    await _loadForRange(emit, 'This Month');
+    await _loadForRange(emit, 'All Time');
   }
 
   void _onChangeTimeRange(
     ChangeTimeRange event,
     Emitter<InsightsState> emit,
   ) async {
-    await _loadForRange(emit, event.range);
+    await _loadForRange(
+      emit,
+      event.range,
+      customStartDate: event.customStartDate,
+      customEndDate: event.customEndDate,
+    );
   }
 
   Future<void> _loadForRange(
     Emitter<InsightsState> emit,
-    String activeRange,
-  ) async {
+    String activeRange, {
+    DateTime? customStartDate,
+    DateTime? customEndDate,
+  }) async {
     emit(InsightsLoading());
     try {
       final techRepo = TechnicianRepository();
@@ -187,10 +210,20 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
       final customers = await customerRepo.getCustomers();
 
       final historiesInRange = serviceHistory.where((entry) {
-        return _matchesRange(_parseHistoryDate(entry.date), activeRange);
+        return _matchesRange(
+          _parseHistoryDate(entry.date),
+          activeRange,
+          customStartDate: customStartDate,
+          customEndDate: customEndDate,
+        );
       }).toList();
       final invoicesInRange = invoices.where((invoice) {
-        return _matchesRange(DateTime.tryParse(invoice.issueDate), activeRange);
+        return _matchesRange(
+          DateTime.tryParse(invoice.issueDate),
+          activeRange,
+          customStartDate: customStartDate,
+          customEndDate: customEndDate,
+        );
       }).toList();
 
       final loadByTechnician = <String, int>{};
@@ -461,6 +494,8 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
       emit(
         InsightsLoaded(
           activeTimeRange: activeRange,
+          customStartDate: customStartDate,
+          customEndDate: customEndDate,
           revenue: revenue,
           profit: profit,
           avgTat: double.parse(avgTat.toStringAsFixed(1)),
@@ -500,7 +535,12 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
     return DateTime(year, month, day);
   }
 
-  bool _matchesRange(DateTime? date, String range) {
+  bool _matchesRange(
+    DateTime? date,
+    String range, {
+    DateTime? customStartDate,
+    DateTime? customEndDate,
+  }) {
     if (date == null) return false;
     final now = DateTime.now();
     switch (range) {
@@ -512,8 +552,16 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
         final start = now.subtract(Duration(days: now.weekday - 1));
         return !date.isBefore(DateTime(start.year, start.month, start.day));
       case 'This Month':
-      case 'Custom':
         return date.year == now.year && date.month == now.month;
+      case 'Custom':
+        if (customStartDate != null && customEndDate != null) {
+          final checkDate = DateTime(date.year, date.month, date.day);
+          final startDate = DateTime(customStartDate.year, customStartDate.month, customStartDate.day);
+          final endDate = DateTime(customEndDate.year, customEndDate.month, customEndDate.day);
+          return !checkDate.isBefore(startDate) && !checkDate.isAfter(endDate);
+        }
+        return date.year == now.year && date.month == now.month;
+      case 'All Time':
       default:
         return true;
     }
