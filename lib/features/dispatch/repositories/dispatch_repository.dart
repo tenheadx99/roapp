@@ -221,6 +221,7 @@ class DispatchRepository {
       installationDate:
           customer.installationDate ??
           (request.type == 'New Installation' ? formattedShortDate : null),
+      updatedAt: DateTime.now().toIso8601String(),
     );
     await db.update(
       'customers',

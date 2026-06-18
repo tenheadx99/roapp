@@ -35,14 +35,18 @@ class CustomerRepository {
 
   Future<void> addCustomer(Customer customer) async {
     final db = await dbHelper.database;
-    await db.insert('customers', customer.toMap());
+    final nowStr = DateTime.now().toIso8601String();
+    final updatedCustomer = customer.copyWith(updatedAt: nowStr);
+    await db.insert('customers', updatedCustomer.toMap());
   }
 
   Future<void> updateCustomer(Customer customer) async {
     final db = await dbHelper.database;
+    final nowStr = DateTime.now().toIso8601String();
+    final updatedCustomer = customer.copyWith(updatedAt: nowStr);
     await db.update(
       'customers',
-      customer.toMap(),
+      updatedCustomer.toMap(),
       where: 'id = ?',
       whereArgs: [customer.id],
     );

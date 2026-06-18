@@ -165,7 +165,7 @@ Widget _buildFilterSection(BuildContext context, {bool isVertical = false}) {
       final filters = [
         {'label': 'All Records', 'icon': Icons.filter_list},
         {'label': 'Service Due', 'icon': null},
-        {'label': 'Area: West Delhi', 'icon': null},
+        {'label': 'Recent', 'icon': null},
         {'label': 'AMC Plan', 'icon': null},
       ];
 

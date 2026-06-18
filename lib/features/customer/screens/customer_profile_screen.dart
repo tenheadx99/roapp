@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/header_text.dart';
@@ -12,6 +13,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../dispatch/bloc/dispatch_bloc.dart';
+import '../../dispatch/models/service_request.dart';
+import '../../dispatch/models/service_request_inventory_item.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../dispatch/screens/add_service_request_bottom_sheet.dart';
 import '../bloc/customer_bloc.dart';
@@ -21,6 +24,7 @@ import '../../operations/models/communication_log.dart';
 import '../../operations/models/invoice.dart';
 import '../../operations/models/service_attachment.dart';
 import '../../operations/repositories/operations_repository.dart';
+import '../../operations/screens/invoice_preview_screen.dart';
 
 class CustomerProfileScreen extends StatefulWidget {
   final Customer customer;
@@ -510,8 +514,11 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
   }
 
   Widget _buildHistoryList(BuildContext context) {
-    return FutureBuilder<List<ServiceHistory>>(
-      future: CustomerRepository().getServiceHistory(customer.id),
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        CustomerRepository().getServiceHistory(customer.id),
+        DispatchRepository().getServiceRequestsByCustomer(customerId: customer.id),
+      ]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
@@ -520,7 +527,16 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
           );
         }
 
-        final history = snapshot.data ?? [];
+        final results = snapshot.data ?? [[], []];
+        final List<ServiceHistory> history = List<ServiceHistory>.from(results[0]);
+        final List<ServiceRequest> requests = List<ServiceRequest>.from(results[1]);
+
+        // Sort history chronologically (newest completed service first)
+        history.sort((a, b) {
+          final da = _parseHistoryDate(a.date);
+          final db = _parseHistoryDate(b.date);
+          return db.compareTo(da);
+        });
 
         return Padding(
           padding: const EdgeInsets.all(16.0).copyWith(bottom: 100),
@@ -726,6 +742,85 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                         fontWeight: FontWeight.bold,
                                         color: Color(0xFF007FFF),
                                       ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Divider(color: Color(0xFFE2E8F0), height: 1),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton.icon(
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text(
+                                        'View Invoice',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(0xFF6366F1),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      onPressed: () {
+                                        final req =
+                                            _getServiceRequestForHistory(
+                                              item,
+                                              requests,
+                                            );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                InvoicePreviewScreen(
+                                                  request: req,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 16),
+                                    TextButton.icon(
+                                      icon: const Icon(
+                                        Icons.share_outlined,
+                                        size: 16,
+                                      ),
+                                      label: const Text(
+                                        'Share Invoice',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: const Color(0xFF0F766E),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      onPressed: () {
+                                        final req =
+                                            _getServiceRequestForHistory(
+                                              item,
+                                              requests,
+                                            );
+                                        _shareInvoice(context, req);
+                                      },
                                     ),
                                   ],
                                 ),
@@ -1007,6 +1102,154 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
       logs: logs,
       attachments: attachments,
     );
+  }
+
+  DateTime _parseHistoryDate(String dateStr) {
+    try {
+      final cleanStr = dateStr.replaceAll('•', '').trim();
+      final regex = RegExp(
+        r'([a-zA-Z]+)\s+(\d+),\s+(\d+)(?:\s+(\d+):(\d+)\s+([a-zA-Z]+))?',
+      );
+      final match = regex.firstMatch(cleanStr);
+      if (match != null) {
+        final monthStr = match.group(1);
+        final dayStr = match.group(2);
+        final yearStr = match.group(3);
+        final hourStr = match.group(4);
+        final minuteStr = match.group(5);
+        final period = match.group(6);
+
+        const months = {
+          'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+          'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        };
+        final month = months[monthStr] ?? 1;
+        final day = int.tryParse(dayStr ?? '') ?? 1;
+        final year = int.tryParse(yearStr ?? '') ?? 2000;
+
+        int hour = 0;
+        int minute = 0;
+        if (hourStr != null && minuteStr != null) {
+          hour = int.tryParse(hourStr) ?? 0;
+          minute = int.tryParse(minuteStr) ?? 0;
+          if (period != null && period.toUpperCase() == 'PM' && hour < 12) {
+            hour += 12;
+          } else if (period != null && period.toUpperCase() == 'AM' && hour == 12) {
+            hour = 0;
+          }
+        }
+        return DateTime(year, month, day, hour, minute);
+      }
+
+      final altRegex = RegExp(r'(\d+)\s+([a-zA-Z]+)\s+(\d+)');
+      final altMatch = altRegex.firstMatch(cleanStr);
+      if (altMatch != null) {
+        final dayStr = altMatch.group(1);
+        final monthStr = altMatch.group(2);
+        final yearStr = altMatch.group(3);
+
+        const months = {
+          'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+          'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
+        };
+        final month = months[monthStr] ?? 1;
+        final day = int.tryParse(dayStr ?? '') ?? 1;
+        final year = int.tryParse(yearStr ?? '') ?? 2000;
+        return DateTime(year, month, day);
+      }
+    } catch (_) {}
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  ServiceRequest _getServiceRequestForHistory(
+    ServiceHistory item,
+    List<ServiceRequest> allRequests,
+  ) {
+    if (item.serviceRequestId != null) {
+      final req = allRequests.firstWhere(
+        (r) => r.id == item.serviceRequestId,
+        orElse: () => const ServiceRequest(
+          id: '',
+          customerName: '',
+          address: '',
+          type: '',
+          model: '',
+          time: '',
+          status: '',
+        ),
+      );
+      if (req.id.isNotEmpty) {
+        return req;
+      }
+    }
+
+    final parts = <ServiceRequestInventoryItem>[];
+    if (item.partsReplaced.trim().isNotEmpty && item.partsReplaced != 'None') {
+      final partsList = item.partsReplaced.split(',');
+      for (final p in partsList) {
+        final trimmed = p.trim();
+        if (trimmed.isNotEmpty) {
+          final qtyReg = RegExp(r'x(\d+)$');
+          final match = qtyReg.firstMatch(trimmed);
+          int qty = 1;
+          String name = trimmed;
+          if (match != null) {
+            qty = int.tryParse(match.group(1)!) ?? 1;
+            name = trimmed.substring(0, match.start).trim();
+          }
+          parts.add(ServiceRequestInventoryItem(
+            inventoryItemId: 'part-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-')}',
+            name: name,
+            quantity: qty,
+            unitPrice: qty > 0 ? item.cost / qty : item.cost,
+          ));
+        }
+      }
+    }
+
+    final compTime = item.date.contains('•')
+        ? _parseHistoryDate(item.date).toIso8601String()
+        : DateTime.now().toIso8601String();
+
+    return ServiceRequest(
+      id: item.serviceRequestId ?? item.id,
+      customerId: item.customerId,
+      customerName: customer.name,
+      address: customer.area,
+      type: item.type,
+      model: customer.model,
+      time: item.date,
+      status: 'completed',
+      completedAt: compTime,
+      technicianName: item.technicianName,
+      notes: item.notes,
+      inventoryItems: parts,
+      totalAmount: item.cost,
+    );
+  }
+
+  Future<void> _shareInvoice(
+    BuildContext context,
+    ServiceRequest request,
+  ) async {
+    try {
+      final operationsRepository = OperationsRepository();
+      final path = await operationsRepository.exportServiceInvoice(request);
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'Service Invoice - ${request.customerName}',
+        text: 'Service invoice for ${request.customerName}',
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invoice saved and ready to share: $path')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not share invoice: $e')),
+      );
+    }
   }
 
   Widget _buildBottomButton(BuildContext scaffoldContext) {

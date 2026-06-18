@@ -8,7 +8,7 @@ import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 11;
+  static const int dbVersion = 12;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -89,7 +89,8 @@ CREATE TABLE customers (
   lastService $textType,
   area $textType,
   installationDate $textNullType,
-  upcomingServiceDate $textNullType
+  upcomingServiceDate $textNullType,
+  updatedAt $textNullType
 )
 ''');
 
@@ -503,6 +504,17 @@ CREATE TABLE IF NOT EXISTS service_attachments (
         db,
         11,
         'Added supplierPrice column to inventory.',
+      );
+    }
+
+    if (oldVersion < 12) {
+      await db.execute(
+        'ALTER TABLE customers ADD COLUMN updatedAt TEXT',
+      );
+      await _recordMigration(
+        db,
+        12,
+        'Added updatedAt column to customers.',
       );
     }
 

@@ -206,7 +206,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     String filterOption,
     List<String> activeAmcCustomerIds,
   ) {
-    return customers.where((c) {
+    var filtered = customers.where((c) {
       final matchesQuery =
           query.isEmpty ||
           c.name.toLowerCase().contains(query) ||
@@ -216,14 +216,62 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
       bool matchesFilter = true;
       if (filterOption == 'Service Due') {
         matchesFilter = c.status == 'Service Due';
-      } else if (filterOption == 'Area: West Delhi') {
-        matchesFilter = c.area == 'West Delhi';
+      } else if (filterOption == 'Recent') {
+        matchesFilter = (c.lastService != 'Never' && c.lastService != 'N/A') || c.updatedAt != null;
       } else if (filterOption == 'AMC Plan') {
         matchesFilter = c.status == 'AMC Plan' || activeAmcCustomerIds.contains(c.id);
       }
 
       return matchesQuery && matchesFilter;
     }).toList();
+
+    if (filterOption == 'Recent') {
+      filtered.sort((a, b) {
+        final ua = DateTime.tryParse(a.updatedAt ?? '') ?? _parseLastServiceDate(a.lastService);
+        final ub = DateTime.tryParse(b.updatedAt ?? '') ?? _parseLastServiceDate(b.lastService);
+
+        if (ua == ub) {
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        }
+        return ub.compareTo(ua); // newest first
+      });
+    }
+
+    return filtered;
+  }
+
+  DateTime _parseLastServiceDate(String lastService) {
+    if (lastService == 'Never' ||
+        lastService == 'N/A' ||
+        lastService.trim().isEmpty) {
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
+    try {
+      final cleanStr = lastService.replaceAll('•', '').trim();
+      final parts = cleanStr.split(' ');
+      if (parts.length >= 3) {
+        final day = int.tryParse(parts[0]) ?? 1;
+        final monthStr = parts[1];
+        final year = int.tryParse(parts[2]) ?? 2000;
+        const months = {
+          'Jan': 1,
+          'Feb': 2,
+          'Mar': 3,
+          'Apr': 4,
+          'May': 5,
+          'Jun': 6,
+          'Jul': 7,
+          'Aug': 8,
+          'Sep': 9,
+          'Oct': 10,
+          'Nov': 11,
+          'Dec': 12,
+        };
+        final month = months[monthStr] ?? 1;
+        return DateTime(year, month, day);
+      }
+    } catch (_) {}
+    return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   void _onAddCustomer(AddCustomer event, Emitter<CustomerState> emit) async {
