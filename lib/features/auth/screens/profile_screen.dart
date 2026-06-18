@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:roapp/features/access/screens/app_access_gate.dart';
 import '../../../core/utils/db_exporter.dart';
 import '../../../core/database/database_helper.dart';
+import '../../settings/bloc/google_backup_cubit.dart';
 import '../../../widgets/custom_button.dart';
 import '../../../widgets/custom_text_field.dart';
 import '../../../widgets/header_text.dart';
@@ -239,6 +241,196 @@ class _ProfileScreenState extends State<ProfileScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Widget _buildGoogleDriveSection() {
+    return BlocProvider<GoogleBackupCubit>(
+      create: (_) => GoogleBackupCubit()..refreshStatus(),
+      child: BlocConsumer<GoogleBackupCubit, GoogleBackupState>(
+        listener: (context, state) {
+          if (state.status == GoogleBackupStatus.backupsLoaded) {
+            _showDriveBackupPicker(context, state.backups);
+            return;
+          }
+          if (state.message == null) return;
+          if (state.status == GoogleBackupStatus.success ||
+              state.status == GoogleBackupStatus.restored ||
+              state.status == GoogleBackupStatus.failure) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message!)));
+          }
+          if (state.status == GoogleBackupStatus.restored) {
+            // Reload the app from the restored database.
+            context.read<AuthBloc>().add(AuthStarted());
+          }
+        },
+        builder: (context, state) {
+          final cubit = context.read<GoogleBackupCubit>();
+          final busy = state.status == GoogleBackupStatus.working;
+          final outlinedStyle = OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(50),
+            side: const BorderSide(color: Color(0xFFBFDBFE)),
+            foregroundColor: const Color(0xFF007FFF),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          );
+
+          if (!state.connected) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: busy ? null : cubit.connect,
+                  icon: const Icon(Icons.cloud_outlined),
+                  label: Text(
+                    busy ? 'Connecting…' : 'Connect Google Drive',
+                  ),
+                  style: outlinedStyle,
+                ),
+              ],
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.cloud_done_outlined,
+                    size: 18,
+                    color: Color(0xFF16A34A),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Google Drive connected',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: busy ? null : cubit.disconnect,
+                    child: const Text('Disconnect'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: busy ? null : cubit.backupNow,
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: Text(
+                  busy ? 'Working…' : 'Back up to Google Drive',
+                ),
+                style: outlinedStyle,
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: busy ? null : cubit.loadBackups,
+                icon: const Icon(Icons.cloud_download_outlined),
+                label: const Text('Restore from Google Drive'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDriveBackupPicker(
+    BuildContext context,
+    List<drive.File> backups,
+  ) {
+    final cubit = context.read<GoogleBackupCubit>();
+    if (backups.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No backups found on Google Drive.')),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: SemiBoldTextView(
+                text: 'Choose a backup to restore',
+                fontSize: 16,
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: backups.length,
+                itemBuilder: (context, index) {
+                  final file = backups[index];
+                  return ListTile(
+                    leading: const Icon(Icons.insert_drive_file_outlined),
+                    title: Text(file.name ?? 'backup.db'),
+                    subtitle: Text(_formatDriveDate(file.modifiedTime)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _confirmDriveRestore(context, cubit, file);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDriveRestore(
+    BuildContext context,
+    GoogleBackupCubit cubit,
+    drive.File file,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore this backup?'),
+        content: Text(
+          'This will replace ALL current data with "${file.name}". '
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              if (file.id != null) cubit.restore(file.id!);
+            },
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDriveDate(DateTime? dt) {
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(local.day)}/${two(local.month)}/${local.year} '
+        '${two(local.hour)}:${two(local.minute)}';
   }
 
   Future<void> _clearAllData() async {
@@ -693,6 +885,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _buildGoogleDriveSection(),
                   const Divider(height: 28),
                   const SemiBoldTextView(
                     text: 'Workspace Settings',

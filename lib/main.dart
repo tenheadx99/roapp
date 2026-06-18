@@ -8,11 +8,14 @@ import 'features/settings/models/app_settings.dart';
 import 'features/settings/repositories/settings_repository.dart';
 
 import 'core/utils/db_exporter.dart';
+import 'core/services/google_drive_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Trigger daily silent database backup
   DbExporter.silentAutoBackup();
+  // Fire-and-forget daily upload to Google Drive (no-op if not connected).
+  GoogleDriveService.instance.silentAutoUpload();
   runApp(const MyApp());
 }
 

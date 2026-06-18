@@ -765,9 +765,20 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
     final nextStatus = request.status == 'assigned'
         ? 'in_progress'
         : 'completed';
-    context.read<DispatchBloc>().add(
-      UpdateServiceRequest(request.copyWith(status: nextStatus)),
-    );
+    final bloc = context.read<DispatchBloc>();
+    bloc.add(UpdateServiceRequest(request.copyWith(status: nextStatus)));
+
+    if (nextStatus == 'completed') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Service completed — moved to the Completed tab.'),
+          action: SnackBarAction(
+            label: 'VIEW',
+            onPressed: () => bloc.add(const FilterDispatchRequests('Completed')),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _downloadInvoice(

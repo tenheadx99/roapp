@@ -194,7 +194,19 @@ class DispatchBloc extends Bloc<DispatchEvent, DispatchState> {
     } else if (tab.startsWith('In Progress')) {
       return requests.where((r) => r.status == 'in_progress').toList();
     } else {
-      return requests.where((r) => r.status == 'completed').toList();
+      final completed = requests
+          .where((r) => r.status == 'completed')
+          .toList();
+      completed.sort((a, b) {
+        final da =
+            DateTime.tryParse(a.completedAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db =
+            DateTime.tryParse(b.completedAt ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da); // newest first
+      });
+      return completed;
     }
   }
 

@@ -78,6 +78,24 @@ class DbExporter {
     return 'Database restored successfully from ${basename(selectedFile.path)}.';
   }
 
+  /// Produces a fresh on-disk copy of the live database and returns it, for
+  /// uploading to a remote destination (e.g. Google Drive). Reuses the same
+  /// `backups/` folder as the local backup flow.
+  static Future<File> dbFileForUpload() async {
+    final dbFolder = await getDatabasesPath();
+    final dbPath = join(dbFolder, DatabaseHelper.dbName);
+    final dbFile = File(dbPath);
+
+    if (!await dbFile.exists()) {
+      throw Exception('Database file not found. Please try again.');
+    }
+
+    final backupDir = await _backupDirectory();
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final uploadPath = join(backupDir.path, 'roapp-upload-$timestamp.db');
+    return dbFile.copy(uploadPath);
+  }
+
   static Future<File?> latestBackupFile() async {
     final backupDir = await _backupDirectory();
     if (!await backupDir.exists()) {

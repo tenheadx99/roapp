@@ -38,6 +38,29 @@ The login screen can restore this local admin account if access is lost.
 2. Run `flutter pub get`.
 3. Start the app with `flutter run`.
 
+## Google Drive Backup
+
+The app can back up / restore its SQLite database to a visible **"RO App Backups"** folder in the
+user's Google Drive (Profile → backup section). It uses a single OAuth2 loopback flow so it works on
+both Android and Windows/Linux desktop.
+
+**One-time Google Cloud setup (required):**
+
+1. Create a Google Cloud project and **enable the Google Drive API**.
+2. Configure the **OAuth consent screen** (External): add the scope
+   `https://www.googleapis.com/auth/drive.file` and add your Google account under **Test users**.
+3. Create an **OAuth client ID of type "Desktop app"** → note the **client ID** and **client secret**.
+4. Run the app with the credentials passed in:
+
+   ```
+   flutter run \
+     --dart-define=GDRIVE_CLIENT_ID=<your-client-id> \
+     --dart-define=GDRIVE_CLIENT_SECRET=<your-client-secret>
+   ```
+
+On **Linux desktop**, `flutter_secure_storage` needs `libsecret-1-dev` / gnome-keyring installed at
+runtime. A daily auto-upload runs at launch when an account is connected (fails silently otherwise).
+
 ## Notes
 
-- The app currently uses a local on-device database, not a remote backend.
+- The app uses a local on-device SQLite database; Google Drive is used only for backup/restore.
