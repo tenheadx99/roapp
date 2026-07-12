@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:roapp/core/utils/currency_formatter.dart';
 import 'package:roapp/core/database/database_helper.dart';
+import 'package:roapp/core/services/invoice_pdf_service.dart';
 import 'package:roapp/features/customer/models/customer.dart';
 import 'package:roapp/features/customer/repositories/customer_repository.dart';
 import 'package:roapp/features/dispatch/models/service_request.dart';
@@ -22,6 +24,7 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
   final CustomerRepository _customerRepository = CustomerRepository();
   final SettingsRepository _settingsRepository = SettingsRepository();
   final OperationsRepository _operationsRepository = OperationsRepository();
+  final InvoicePdfService _invoicePdfService = InvoicePdfService();
 
   late Future<Map<String, dynamic>> _invoiceDataFuture;
 
@@ -95,7 +98,7 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
     try {
       final path = await _operationsRepository.exportServiceInvoice(widget.request);
       await Share.shareXFiles(
-        [XFile(path)],
+        [XFile(path, mimeType: 'application/pdf')],
         subject: 'Service Invoice - ${widget.request.customerName}',
         text: 'Service invoice for ${widget.request.customerName}',
       );
@@ -103,6 +106,38 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not share invoice: $e')),
+      );
+    }
+  }
+
+  Future<void> _printInvoice() async {
+    try {
+      final data = await _invoiceDataFuture;
+      final Customer? customer = data['customer'];
+      final AppSettings settings = data['settings'];
+      final Map<String, double> mrpMap = data['mrpMap'];
+      final String invoiceNumber = data['invoiceNumber'];
+      final DateTime completedAt = data['completedAt'];
+
+      final pdfBytes = await _invoicePdfService.buildServiceInvoicePdf(
+        request: widget.request,
+        customer: customer,
+        invoiceNumber: invoiceNumber,
+        completedAt: completedAt,
+        businessName: settings.businessName,
+        businessPhone: settings.businessPhone,
+        businessAddress: settings.businessAddress,
+        mrpMap: mrpMap,
+      );
+
+      await Printing.layoutPdf(
+        name: '$invoiceNumber.pdf',
+        onLayout: (format) async => pdfBytes,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not print invoice: $e')),
       );
     }
   }
@@ -120,6 +155,11 @@ class _InvoicePreviewScreenState extends State<InvoicePreviewScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Print / PDF Preview',
+            onPressed: _printInvoice,
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share Invoice',

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/utils/db_exporter.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../widgets/responsive_layout.dart';
 import '../../../widgets/semi_bold_text_view.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/models/user.dart';
-import '../../auth/repositories/auth_repository.dart';
 import '../../auth/screens/profile_screen.dart';
+import '../../customer/bloc/customer_bloc.dart';
+import '../../customer/screens/add_customer_bottom_sheet.dart';
 import '../../customer/screens/customer_list_screen.dart';
+import '../../dispatch/bloc/dispatch_bloc.dart';
+import '../../dispatch/screens/add_service_request_bottom_sheet.dart';
 import '../../dispatch/screens/dispatch_hub_screen.dart';
+import '../../inventory/bloc/inventory_bloc.dart';
+import '../../inventory/screens/add_inventory_item_bottom_sheet.dart';
+import '../../supplier/bloc/supplier_bloc.dart';
+import '../../supplier/screens/add_supplier_bottom_sheet.dart';
 import '../../insights/screens/insights_screen.dart';
 import '../../inventory/screens/inventory_screen.dart';
 import '../../notifications/screens/notifications_screen.dart';
@@ -141,6 +147,7 @@ class DashboardScreen extends StatelessWidget {
           desktop: _DesktopDashboardView(),
         ),
         floatingActionButton: FloatingActionButton(
+          heroTag: 'dashboard_quick_create',
           onPressed: () => _showQuickCreateSheet(context),
           backgroundColor: const Color(0xFF007FFF),
           child: const Icon(Icons.add, size: 30),
@@ -245,7 +252,7 @@ class _DesktopDashboardView extends StatelessWidget {
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFE2E8F0),
+                                color: Theme.of(context).dividerColor,
                               ),
                             ),
                             child: _buildScheduledServices(
@@ -260,7 +267,7 @@ class _DesktopDashboardView extends StatelessWidget {
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: const Color(0xFFE2E8F0),
+                                color: Theme.of(context).dividerColor,
                               ),
                             ),
                             child: _buildRecentActivity(
@@ -279,7 +286,7 @@ class _DesktopDashboardView extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: Theme.of(context).dividerColor),
                         ),
                         child: _buildQuickActions(context),
                       ),
@@ -880,6 +887,23 @@ Widget _buildRecentActivity(
   );
 }
 
+/// Opens [sheet] as a modal bottom sheet from the dashboard, then refreshes
+/// the dashboard stats once it closes.
+Future<void> _openQuickCreateSheet(BuildContext context, Widget sheet) async {
+  DashboardBloc? dashboardBloc;
+  try {
+    dashboardBloc = context.read<DashboardBloc>();
+  } catch (_) {}
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => sheet,
+  );
+  dashboardBloc?.add(DashboardDataRequested());
+}
+
 void _showQuickCreateSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -887,7 +911,7 @@ void _showQuickCreateSheet(BuildContext context) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
-    builder: (context) {
+    builder: (sheetContext) {
       return SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -901,11 +925,14 @@ void _showQuickCreateSheet(BuildContext context) {
                 leading: const Icon(Icons.person_add_alt_1_outlined),
                 title: const Text('New Customer'),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
+                  Navigator.pop(sheetContext);
+                  _openQuickCreateSheet(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const CustomerListScreen(),
+                    BlocProvider(
+                      create: (_) => CustomerBloc()..add(
+                        const LoadCustomersRequested(),
+                      ),
+                      child: const AddCustomerBottomSheet(),
                     ),
                   );
                 },
@@ -914,11 +941,12 @@ void _showQuickCreateSheet(BuildContext context) {
                 leading: const Icon(Icons.build_circle_outlined),
                 title: const Text('Service Request'),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
+                  Navigator.pop(sheetContext);
+                  _openQuickCreateSheet(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const DispatchHubScreen(),
+                    BlocProvider(
+                      create: (_) => DispatchBloc()..add(LoadDispatchRequests()),
+                      child: const AddServiceRequestBottomSheet(),
                     ),
                   );
                 },
@@ -927,10 +955,14 @@ void _showQuickCreateSheet(BuildContext context) {
                 leading: const Icon(Icons.inventory_2_outlined),
                 title: const Text('Inventory Item'),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
+                  Navigator.pop(sheetContext);
+                  _openQuickCreateSheet(
                     context,
-                    MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                    BlocProvider(
+                      create: (_) =>
+                          InventoryBloc()..add(LoadInventoryRequested()),
+                      child: const AddInventoryItemBottomSheet(),
+                    ),
                   );
                 },
               ),
@@ -938,7 +970,7 @@ void _showQuickCreateSheet(BuildContext context) {
                 leading: const Icon(Icons.receipt_long_outlined),
                 title: const Text('Invoice / AMC / PO'),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -951,11 +983,13 @@ void _showQuickCreateSheet(BuildContext context) {
                 leading: const Icon(Icons.precision_manufacturing_outlined),
                 title: const Text('Supplier'),
                 onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
+                  Navigator.pop(sheetContext);
+                  _openQuickCreateSheet(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => const SupplierDirectoryScreen(),
+                    BlocProvider(
+                      create: (_) =>
+                          SupplierBloc()..add(LoadSuppliersRequested()),
+                      child: const AddSupplierBottomSheet(),
                     ),
                   );
                 },
@@ -1295,7 +1329,7 @@ class _StatCardState extends State<_StatCard> {
                     style: TextStyle(
                       color: widget.isAlert
                           ? Colors.red.shade600
-                          : const Color(0xFF0F172A),
+                          : Theme.of(context).colorScheme.onSurface,
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                     ),

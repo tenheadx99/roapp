@@ -4,6 +4,7 @@ import '../../../widgets/semi_bold_text_view.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import '../../dispatch/screens/dispatch_hub_screen.dart';
 import '../../inventory/screens/inventory_screen.dart';
+import '../../operations/screens/operations_center_screen.dart';
 import '../bloc/notifications_bloc.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -14,20 +15,15 @@ class NotificationsScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NotificationsBloc()..add(LoadNotifications()),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
         appBar: AppBar(
           title: const Text(
             'Notifications',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).cardColor,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -125,10 +121,15 @@ class NotificationsScreen extends StatelessWidget {
                           ),
                         ),
                       ];
-                    return ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: rows.length,
-                      itemBuilder: (context, index) => rows[index](),
+                    return RefreshIndicator(
+                      onRefresh: () async => context
+                          .read<NotificationsBloc>()
+                          .add(LoadNotifications()),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: rows.length,
+                        itemBuilder: (context, index) => rows[index](),
+                      ),
                     );
                   }
                   return const SizedBox();
@@ -142,8 +143,9 @@ class NotificationsScreen extends StatelessWidget {
   }
 
   Widget _buildTabs() {
-    return Container(
-      color: Colors.white,
+    return Builder(
+      builder: (context) => Container(
+      color: Theme.of(context).cardColor,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: BlocBuilder<NotificationsBloc, NotificationsState>(
         builder: (context, state) {
@@ -157,7 +159,7 @@ class NotificationsScreen extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -174,7 +176,7 @@ class NotificationsScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       decoration: isActive
                           ? BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(8),
                               boxShadow: [
                                 BoxShadow(
@@ -194,7 +196,7 @@ class NotificationsScreen extends StatelessWidget {
                                 ? FontWeight.bold
                                 : FontWeight.w500,
                             color: isActive
-                                ? Colors.black
+                                ? Theme.of(context).colorScheme.onSurface
                                 : const Color(0xFF64748B),
                           ),
                         ),
@@ -206,6 +208,7 @@ class NotificationsScreen extends StatelessWidget {
             ),
           );
         },
+      ),
       ),
     );
   }
@@ -226,9 +229,9 @@ class NotificationsScreen extends StatelessWidget {
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4),
         ],
@@ -354,8 +357,10 @@ class NotificationsScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+        color: Theme.of(context).cardColor,
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).dividerColor),
+        ),
       ),
       child: InkWell(
         onTap: () => _handleNotificationAction(context, data),
@@ -440,6 +445,9 @@ class NotificationsScreen extends StatelessWidget {
       case 'dispatch':
         destination = const DispatchHubScreen();
         break;
+      case 'operations':
+        destination = const OperationsCenterScreen();
+        break;
       default:
         destination = const DashboardScreen();
         break;
@@ -458,7 +466,7 @@ class NotificationsScreen extends StatelessWidget {
 
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

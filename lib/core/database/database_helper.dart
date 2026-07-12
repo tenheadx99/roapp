@@ -11,7 +11,7 @@ class DatabaseHelper {
   /// Mutable so tests can point each file at its own database and avoid
   /// cross-isolate lock contention; production code never changes it.
   static String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 13;
+  static const int dbVersion = 14;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -236,6 +236,7 @@ CREATE TABLE purchase_orders (
   totalAmount $doubleType,
   leadDays $intType,
   notes $textNullType,
+  lineItems $textNullType,
   FOREIGN KEY (supplierId) REFERENCES suppliers (id) ON DELETE CASCADE
 )
 ''');
@@ -568,6 +569,17 @@ WHERE status = 'completed'
         db,
         13,
         'Added indexes, backfilled completion timestamps, hashed passkeys.',
+      );
+    }
+
+    if (oldVersion < 14) {
+      await db.execute(
+        'ALTER TABLE purchase_orders ADD COLUMN lineItems TEXT',
+      );
+      await _recordMigration(
+        db,
+        14,
+        'Added line items to purchase orders for stock-in on receipt.',
       );
     }
 

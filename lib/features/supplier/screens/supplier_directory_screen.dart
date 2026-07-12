@@ -34,7 +34,6 @@ class _MobileSupplierView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
         title: const SemiBoldTextView(
           text: AppStrings.supplierDirectory,
@@ -71,7 +70,6 @@ class _DesktopSupplierView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
       body: Row(
         children: [
           // Sidebar / Sidebar Navigation could go here, but for now just the filter part
@@ -359,7 +357,11 @@ class _SupplierList extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: isDesktop
+                child: RefreshIndicator(
+                  onRefresh: () async => context
+                      .read<SupplierBloc>()
+                      .add(LoadSuppliersRequested()),
+                  child: isDesktop
                     ? GridView.builder(
                         padding: const EdgeInsets.all(16),
                         gridDelegate:
@@ -384,6 +386,7 @@ class _SupplierList extends StatelessWidget {
                         itemBuilder: (context, index) =>
                             _SupplierCard(supplier: suppliers[index]),
                       ),
+                ),
               ),
             ],
           );

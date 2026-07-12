@@ -18,7 +18,6 @@ class CustomerListScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => CustomerBloc()..add(LoadCustomersRequested(initialFilter: initialFilter)),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F8),
         appBar: AppBar(
           title: const Text(
             'Customer Database',
@@ -28,12 +27,14 @@ class CustomerListScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).cardColor,
           elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.of(context).pop(), // Placeholder
-          ),
+          leading: Navigator.of(context).canPop()
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null,
         ),
         body: const ResponsiveLayout(
           mobile: _MobileCustomerView(),
@@ -42,6 +43,7 @@ class CustomerListScreen extends StatelessWidget {
         floatingActionButton: Builder(
           builder: (context) {
             return FloatingActionButton(
+              heroTag: 'add_customer',
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -222,12 +224,20 @@ Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
         return Center(child: Text(state.message));
       } else if (state is CustomerLoaded) {
         final customers = state.filteredCustomers;
+        Future<void> refresh() async {
+          context.read<CustomerBloc>().add(
+            LoadCustomersRequested(initialFilter: state.currentFilter),
+          );
+        }
+
         if (customers.isEmpty) {
           return const Center(child: Text('No customers found.'));
         }
 
         if (isDesktop) {
-          return GridView.builder(
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 400,
               mainAxisExtent: 220,
@@ -250,10 +260,13 @@ Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
                 },
               );
             },
+            ),
           );
         }
 
-        return ListView.separated(
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           itemCount: customers.length,
           separatorBuilder: (context, index) => const SizedBox(height: 12),
@@ -272,6 +285,7 @@ Widget _buildCustomerList(BuildContext context, {required bool isDesktop}) {
               },
             );
           },
+          ),
         );
       }
       return const SizedBox();

@@ -4,6 +4,7 @@ import '../../customer/models/customer.dart';
 import '../../customer/repositories/customer_repository.dart';
 import '../../dispatch/repositories/dispatch_repository.dart';
 import '../../inventory/repositories/inventory_repository.dart';
+import '../../operations/repositories/operations_repository.dart';
 import '../../settings/repositories/settings_repository.dart';
 
 // --- Events ---
@@ -93,6 +94,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final DispatchRepository dispatchRepository;
   final CustomerRepository customerRepository;
   final SettingsRepository settingsRepository;
+  final OperationsRepository operationsRepository;
   final DateTime Function() nowProvider;
 
   NotificationsBloc({
@@ -100,11 +102,13 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     DispatchRepository? dispatchRepository,
     CustomerRepository? customerRepository,
     SettingsRepository? settingsRepository,
+    OperationsRepository? operationsRepository,
     DateTime Function()? nowProvider,
   }) : inventoryRepository = inventoryRepository ?? InventoryRepository(),
        dispatchRepository = dispatchRepository ?? DispatchRepository(),
        customerRepository = customerRepository ?? CustomerRepository(),
        settingsRepository = settingsRepository ?? SettingsRepository(),
+       operationsRepository = operationsRepository ?? OperationsRepository(),
        nowProvider = nowProvider ?? DateTime.now,
        super(NotificationsInitial()) {
     on<LoadNotifications>(_onLoadNotifications);
@@ -180,6 +184,33 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           'icon': 'package',
           'actionLabel': 'Open Inventory',
           'actionRoute': 'inventory',
+        });
+      }
+
+      final contracts = await operationsRepository.getContracts();
+      final customerById = {
+        for (final customer in customers) customer.id: customer,
+      };
+      final renewalDueContracts = contracts.where(
+        (contract) =>
+            contract.status.toLowerCase() == 'active' && contract.isRenewalDue,
+      );
+      for (final contract in renewalDueContracts) {
+        final customer = customerById[contract.customerId];
+        final endDate = DateTime.tryParse(contract.endDate);
+        notifications.add({
+          'id': 'amc-renewal-${contract.id}',
+          'type': 'urgent',
+          'category': 'Service',
+          'title': 'AMC Renewal Due',
+          'time': endDate == null ? 'Soon' : _formatDate(endDate),
+          'content':
+              '${customer?.name ?? 'A customer'}\'s "${contract.contractName}" ends '
+              '${endDate == null ? 'soon' : 'on ${_formatDate(endDate)}'}. Reach out to renew.',
+          'isRead': false,
+          'icon': 'alert',
+          'actionLabel': 'Open Operations',
+          'actionRoute': 'operations',
         });
       }
 

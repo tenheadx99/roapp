@@ -9,6 +9,7 @@ import 'features/settings/repositories/settings_repository.dart';
 
 import 'core/utils/db_exporter.dart';
 import 'core/services/google_drive_service.dart';
+import 'core/services/local_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,11 @@ void main() async {
   await DbExporter.silentAutoBackup();
   // Fire-and-forget daily upload to Google Drive (no-op if not connected).
   GoogleDriveService.instance.silentAutoUpload();
+  // Schedule reminder notifications (due services, AMC renewals, low stock)
+  // for the coming week. Fire-and-forget; failures only lose reminders.
+  LocalNotificationService.instance
+      .init()
+      .then((_) => LocalNotificationService.instance.refreshSchedules());
   runApp(const MyApp());
 }
 

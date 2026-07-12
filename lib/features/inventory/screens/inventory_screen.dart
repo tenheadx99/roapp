@@ -20,7 +20,6 @@ class InventoryScreen extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF5F7F8),
             appBar: AppBar(
               title: const Text(
                 'Parts & Filters',
@@ -347,32 +346,42 @@ Widget _buildInventoryList(BuildContext context, {required bool isDesktop}) {
         return Center(child: Text(state.message));
       } else if (state is InventoryLoaded) {
         final items = state.filteredItems;
+        Future<void> refresh() async {
+          context.read<InventoryBloc>().add(LoadInventoryRequested());
+        }
+
         if (items.isEmpty) {
           return const Center(child: Text('No inventory items found.'));
         }
 
         if (isDesktop) {
-          return GridView.builder(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 400,
-              mainAxisExtent: 160,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 400,
+                mainAxisExtent: 160,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                return _InventoryCard(item: items[index]);
+              },
             ),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              return _InventoryCard(item: items[index]);
-            },
           );
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: items.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            return _InventoryCard(item: items[index]);
-          },
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return _InventoryCard(item: items[index]);
+            },
+          ),
         );
       }
       return const SizedBox();

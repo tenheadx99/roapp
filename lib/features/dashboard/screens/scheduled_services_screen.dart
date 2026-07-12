@@ -10,7 +10,6 @@ class ScheduledServicesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
         title: const Text(
           'Scheduled Services',

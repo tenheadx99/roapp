@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:roapp/features/auth/bloc/auth_bloc.dart';
 import 'package:roapp/features/auth/screens/login_screen.dart';
-import 'package:roapp/features/dashboard/screens/dashboard_screen.dart';
+import 'package:roapp/features/home/screens/home_shell.dart';
 
 class AuthLaunchScreen extends StatelessWidget {
   const AuthLaunchScreen({super.key});
@@ -12,7 +12,7 @@ class AuthLaunchScreen extends StatelessWidget {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         if (state is AuthAuthenticated) {
-          return const DashboardScreen();
+          return const HomeShell();
         }
 
         if (state is AuthUnauthenticated || state is AuthError) {
@@ -20,7 +20,6 @@ class AuthLaunchScreen extends StatelessWidget {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F7F8),
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,

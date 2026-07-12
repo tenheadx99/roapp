@@ -108,7 +108,6 @@ class TechniciansScreen extends StatelessWidget {
       child: Builder(
         builder: (context) {
           return Scaffold(
-            backgroundColor: const Color(0xFFF5F7F8),
             appBar: AppBar(
               title: const Text(
                 AppStrings.technicians,
@@ -247,16 +246,21 @@ class TechniciansScreen extends StatelessWidget {
                             child: Text(AppStrings.noTechniciansFound),
                           );
                         }
-                        return ListView.separated(
-                          padding: const EdgeInsets.all(
-                            16,
-                          ).copyWith(bottom: 24),
-                          itemCount: techs.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            return _buildTechCard(context, techs[index]);
-                          },
+                        return RefreshIndicator(
+                          onRefresh: () async => context
+                              .read<TechnicianBloc>()
+                              .add(LoadTechnicians()),
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(
+                              16,
+                            ).copyWith(bottom: 24),
+                            itemCount: techs.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) {
+                              return _buildTechCard(context, techs[index]);
+                            },
+                          ),
                         );
                       }
                       return const SizedBox();

@@ -57,10 +57,12 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
             theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
         foregroundColor: foreground,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: foreground),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: foreground),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
       ),
       body: BlocBuilder<DispatchBloc, DispatchState>(
         builder: (context, state) {
@@ -398,7 +400,10 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
       );
     }
 
-    return ListView.separated(
+    return RefreshIndicator(
+      onRefresh: () async =>
+          context.read<DispatchBloc>().add(LoadDispatchRequests()),
+      child: ListView.separated(
       padding: const EdgeInsets.all(16).copyWith(bottom: 80),
       itemCount: requests.length,
       separatorBuilder: (context, index) => const SizedBox(height: 16),
@@ -722,6 +727,7 @@ class _DispatchHubViewState extends State<_DispatchHubView> {
           ),
         );
       },
+      ),
     );
   }
 

@@ -8,7 +8,7 @@ import '../../../widgets/label_text.dart';
 import '../../../widgets/sub_regular_text.dart';
 import '../bloc/auth_bloc.dart';
 import '../repositories/auth_repository.dart';
-import '../../dashboard/screens/dashboard_screen.dart';
+import '../../home/screens/home_shell.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -85,11 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
       },
       builder: (context, state) {
         if (state is AuthAuthenticated) {
-          return const DashboardScreen();
+          return const HomeShell();
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F7F8),
           body: SafeArea(
             child: Center(
               child: SingleChildScrollView(
