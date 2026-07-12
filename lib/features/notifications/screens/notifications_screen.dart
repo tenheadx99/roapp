@@ -53,11 +53,11 @@ class NotificationsScreen extends StatelessWidget {
                         .where((n) => !(n['isRead'] as bool))
                         .length;
 
-                    return ListView(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      children: [
+                    // Rows are deferred closures so ListView.builder only
+                    // builds the tiles that are actually on screen.
+                    final rows = <Widget Function()>[
                         if (urgent.isNotEmpty) ...[
-                          Padding(
+                          () => Padding(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -93,10 +93,12 @@ class NotificationsScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          ...urgent.map((n) => _buildUrgentAlert(context, n)),
+                          ...urgent.map(
+                            (n) => () => _buildUrgentAlert(context, n),
+                          ),
                         ],
                         if (normal.isNotEmpty) ...[
-                          const Padding(
+                          () => const Padding(
                             padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
                             child: Text(
                               'RECENTLY RECEIVED',
@@ -109,11 +111,11 @@ class NotificationsScreen extends StatelessWidget {
                             ),
                           ),
                           ...normal.map(
-                            (n) => _buildNormalNotification(context, n),
+                            (n) => () => _buildNormalNotification(context, n),
                           ),
                         ],
-                        const SizedBox(height: 32),
-                        Center(
+                        () => const SizedBox(height: 32),
+                        () => Center(
                           child: TextButton(
                             onPressed: () => _showArchiveSheet(context),
                             child: const Text(
@@ -122,7 +124,11 @@ class NotificationsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ],
+                      ];
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: rows.length,
+                      itemBuilder: (context, index) => rows[index](),
                     );
                   }
                   return const SizedBox();

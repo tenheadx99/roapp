@@ -1,4 +1,5 @@
 import 'package:roapp/core/database/database_helper.dart';
+import 'package:roapp/core/utils/passkey_hasher.dart';
 import 'package:roapp/features/auth/models/user.dart';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
@@ -21,7 +22,7 @@ class AuthRepository {
       await db.insert('users', {
         'id': 'default-admin',
         'email': defaultAdminEmail,
-        'passkey': defaultAdminPasskey,
+        'passkey': PasskeyHasher.hash(defaultAdminPasskey),
         'name': 'Ramesh Admin',
         'phone': '+91 9876543210',
         'role': 'Operations Admin',
@@ -48,7 +49,7 @@ class AuthRepository {
     final Map<String, dynamic> userMap = {
       'id': uuid.v4(),
       'email': normalizedEmail,
-      'passkey': passkey.trim(),
+      'passkey': PasskeyHasher.hash(passkey),
     };
 
     int result = await db.insert('users', userMap);
@@ -60,16 +61,30 @@ class AuthRepository {
     final normalizedEmail = email.trim().toLowerCase();
     final maps = await db.query(
       'users',
-      where: 'email = ? AND passkey = ?',
-      whereArgs: [normalizedEmail, passkey.trim()],
+      where: 'email = ?',
+      whereArgs: [normalizedEmail],
+      limit: 1,
     );
 
-    if (maps.isNotEmpty) {
-      final user = User.fromMap(maps.first);
-      await persistCurrentUser(user.id);
-      return user;
+    if (maps.isEmpty) return null;
+
+    final storedPasskey = maps.first['passkey'] as String? ?? '';
+    if (!PasskeyHasher.verify(passkey, storedPasskey)) {
+      return null;
     }
-    return null;
+
+    final user = User.fromMap(maps.first);
+    if (!PasskeyHasher.isHashed(storedPasskey)) {
+      // Legacy plaintext row: upgrade it now that we know the passkey.
+      await db.update(
+        'users',
+        {'passkey': PasskeyHasher.hash(passkey)},
+        where: 'id = ?',
+        whereArgs: [user.id],
+      );
+    }
+    await persistCurrentUser(user.id);
+    return user;
   }
 
   Future<User?> getUserById(String id) async {
@@ -129,21 +144,47 @@ class AuthRepository {
 
     final matches = await db.query(
       'users',
-      where: 'id = ? AND passkey = ?',
-      whereArgs: [userId, trimmedCurrent],
+      where: 'id = ?',
+      whereArgs: [userId],
       limit: 1,
     );
 
-    if (matches.isEmpty) {
+    final storedPasskey = matches.isEmpty
+        ? ''
+        : matches.first['passkey'] as String? ?? '';
+    if (matches.isEmpty || !PasskeyHasher.verify(trimmedCurrent, storedPasskey)) {
       throw Exception('Current password is incorrect.');
     }
 
     await db.update(
       'users',
-      {'passkey': trimmedNew},
+      {'passkey': PasskeyHasher.hash(trimmedNew)},
       where: 'id = ?',
       whereArgs: [userId],
     );
+  }
+
+  /// Verifies [passkey] against the stored credential of [userId], or against
+  /// the current signed-in user when [userId] is omitted.
+  Future<bool> verifyPasskey(String passkey, {String? userId}) async {
+    final db = await dbHelper.database;
+    String? id = userId;
+    if (id == null) {
+      final persisted = await getPersistedUser();
+      id = persisted?.id;
+    }
+    if (id == null) return false;
+
+    final rows = await db.query(
+      'users',
+      columns: ['passkey'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return false;
+    final stored = rows.first['passkey'] as String? ?? '';
+    return PasskeyHasher.verify(passkey, stored);
   }
 
   Future<bool> userExists() async {
@@ -159,7 +200,7 @@ class AuthRepository {
     await db.insert('users', {
       'id': 'default-admin',
       'email': defaultAdminEmail,
-      'passkey': defaultAdminPasskey,
+      'passkey': PasskeyHasher.hash(defaultAdminPasskey),
       'name': 'Ramesh Admin',
       'phone': '+91 9876543210',
       'role': 'Operations Admin',

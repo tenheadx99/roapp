@@ -12,8 +12,9 @@ import 'core/services/google_drive_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Trigger daily silent database backup
-  DbExporter.silentAutoBackup();
+  // Daily silent database backup. Awaited so the copy cannot race with the
+  // first database open/migration triggered by the app below.
+  await DbExporter.silentAutoBackup();
   // Fire-and-forget daily upload to Google Drive (no-op if not connected).
   GoogleDriveService.instance.silentAutoUpload();
   runApp(const MyApp());
@@ -36,6 +37,10 @@ class MyApp extends StatelessWidget {
         ),
       ],
       child: BlocBuilder<SettingsCubit, AppSettings>(
+        // Only the theme mode is read here; don't rebuild the whole app for
+        // unrelated settings changes (business name, backup flags, ...).
+        buildWhen: (previous, current) =>
+            previous.themeMode != current.themeMode,
         builder: (context, settings) {
           return MaterialApp(
             title: 'RO Manager',

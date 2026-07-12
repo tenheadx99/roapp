@@ -621,6 +621,13 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                         _showMessage('Fill in the contract details properly.');
                         return;
                       }
+                      final now = DateTime.now();
+                      final today = DateTime(now.year, now.month, now.day);
+                      final endDay = DateTime(
+                        endDate.year,
+                        endDate.month,
+                        endDate.day,
+                      );
                       final contract = AmcContract(
                         id: existing?.id ?? _uuid.v4(),
                         customerId: selectedCustomerId,
@@ -630,9 +637,7 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                         visitsIncluded: visits,
                         visitsUsed: used,
                         amount: amount,
-                        status: endDate.isBefore(DateTime.now())
-                            ? 'expired'
-                            : 'active',
+                        status: endDay.isBefore(today) ? 'expired' : 'active',
                         renewalReminderDate: reminderDate.toIso8601String(),
                       );
                       await _operationsRepository.upsertContract(contract);
@@ -1324,12 +1329,14 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _reload,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _OverviewGrid(overview: _overview),
-                  const SizedBox(height: 16),
-                  _SectionCard(
+              child: Builder(
+                builder: (context) {
+                  // Sections are deferred closures so ListView.builder only
+                  // builds the cards that are actually on screen.
+                  final sections = <Widget Function()>[
+                  () => _OverviewGrid(overview: _overview),
+                  () => const SizedBox(height: 16),
+                  () => _SectionCard(
                     title: 'Invoices & Dues',
                     subtitle: 'Track billing, payments, and overdue balances.',
                     actionLabel: 'Add Invoice',
@@ -1472,8 +1479,8 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                             }).toList(),
                           ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
+                  () => const SizedBox(height: 12),
+                  () => _SectionCard(
                     title: 'AMC Contracts',
                     subtitle: 'Renewals, visit quotas, and plan value.',
                     actionLabel: 'Add Contract',
@@ -1503,8 +1510,8 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                 .toList(),
                           ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
+                  () => const SizedBox(height: 12),
+                  () => _SectionCard(
                     title: 'Customer Timeline',
                     subtitle: 'Calls, WhatsApp follow-ups, and service notes.',
                     actionLabel: 'Add Entry',
@@ -1541,8 +1548,8 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                 .toList(),
                           ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
+                  () => const SizedBox(height: 12),
+                  () => _SectionCard(
                     title: 'Procurement',
                     subtitle:
                         'Supplier lead times, open purchase orders, and receiving status.',
@@ -1572,8 +1579,8 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                 .toList(),
                           ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
+                  () => const SizedBox(height: 12),
+                  () => _SectionCard(
                     title: 'Technician Schedules',
                     subtitle:
                         'Routes, leave status, planned stops, and daily checklist.',
@@ -1606,8 +1613,8 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                 .toList(),
                           ),
                   ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
+                  () => const SizedBox(height: 12),
+                  () => _SectionCard(
                     title: 'Service Proof',
                     subtitle:
                         'Installation photos, warranty slips, and signed completion evidence.',
@@ -1637,8 +1644,14 @@ class _OperationsCenterScreenState extends State<OperationsCenterScreen> {
                                 .toList(),
                           ),
                   ),
-                  const SizedBox(height: 88),
-                ],
+                  () => const SizedBox(height: 88),
+                  ];
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: sections.length,
+                    itemBuilder: (context, index) => sections[index](),
+                  );
+                },
               ),
             ),
     );

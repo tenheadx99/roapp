@@ -1,14 +1,17 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:roapp/core/database/dummy_data.dart';
+import 'package:roapp/core/utils/passkey_hasher.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  static const String dbName = 'roapp_private_v2.db';
-  static const int dbVersion = 12;
+  /// Mutable so tests can point each file at its own database and avoid
+  /// cross-isolate lock contention; production code never changes it.
+  static String dbName = 'roapp_private_v2.db';
+  static const int dbVersion = 13;
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
@@ -263,12 +266,36 @@ CREATE TABLE service_attachments (
 )
 ''');
 
+    await _createIndexes(db);
+
     await _recordMigration(
       db,
       version,
       'Initial schema with operations and settings tables.',
     );
     await _ensureDefaultAdmin(db);
+  }
+
+  Future<void> _createIndexes(DatabaseExecutor db) async {
+    const statements = [
+      'CREATE INDEX IF NOT EXISTS idx_service_requests_customerId ON service_requests (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests (status)',
+      'CREATE INDEX IF NOT EXISTS idx_service_requests_customerName ON service_requests (customerName)',
+      'CREATE INDEX IF NOT EXISTS idx_service_history_customerId ON service_history (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_service_history_serviceRequestId ON service_history (serviceRequestId)',
+      'CREATE INDEX IF NOT EXISTS idx_invoices_customerId ON invoices (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices (status)',
+      'CREATE INDEX IF NOT EXISTS idx_amc_contracts_customerId ON amc_contracts (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_amc_contracts_status ON amc_contracts (status)',
+      'CREATE INDEX IF NOT EXISTS idx_communication_logs_customerId ON communication_logs (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplierId ON purchase_orders (supplierId)',
+      'CREATE INDEX IF NOT EXISTS idx_technician_schedules_technicianId ON technician_schedules (technicianId)',
+      'CREATE INDEX IF NOT EXISTS idx_service_attachments_customerId ON service_attachments (customerId)',
+      'CREATE INDEX IF NOT EXISTS idx_customers_name ON customers (name)',
+    ];
+    for (final statement in statements) {
+      await db.execute(statement);
+    }
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -338,15 +365,9 @@ CREATE TABLE app_settings (
 ''');
     }
 
-    if (oldVersion < 6) {
-      await db.delete('customers');
-      await db.delete('inventory');
-      await db.delete('service_requests');
-      await db.delete('suppliers');
-      await db.delete('technicians');
-      await db.delete('service_history');
-      await db.delete('product_categories');
-    }
+    // v6 previously wiped all business tables here. That destroyed real user
+    // data on upgrade, so it is intentionally a no-op now: later migrations
+    // only add tables/columns and work fine on preserved v5 data.
 
     if (oldVersion < 7) {
       await db.execute('''
@@ -518,6 +539,38 @@ CREATE TABLE IF NOT EXISTS service_attachments (
       );
     }
 
+    if (oldVersion < 13) {
+      await _createIndexes(db);
+
+      // Backfill completion timestamps so completed requests no longer rely
+      // on the read-path sync to acquire one.
+      await db.execute('''
+UPDATE service_requests
+SET completedAt = COALESCE(NULLIF(TRIM(completedAt), ''), scheduledFor, ?)
+WHERE status = 'completed'
+  AND (completedAt IS NULL OR TRIM(completedAt) = '')
+''', [DateTime.now().toIso8601String()]);
+
+      // Hash any plaintext passkeys.
+      final users = await db.query('users', columns: ['id', 'passkey']);
+      for (final row in users) {
+        final passkey = row['passkey'] as String? ?? '';
+        if (passkey.isEmpty || PasskeyHasher.isHashed(passkey)) continue;
+        await db.update(
+          'users',
+          {'passkey': PasskeyHasher.hash(passkey)},
+          where: 'id = ?',
+          whereArgs: [row['id']],
+        );
+      }
+
+      await _recordMigration(
+        db,
+        13,
+        'Added indexes, backfilled completion timestamps, hashed passkeys.',
+      );
+    }
+
     await _ensureDefaultAdmin(db);
   }
 
@@ -544,7 +597,7 @@ CREATE TABLE IF NOT EXISTS service_attachments (
       await db.insert('users', {
         'id': 'default-admin',
         'email': 'admin@roservice.com',
-        'passkey': 'password123',
+        'passkey': PasskeyHasher.hash('password123'),
         'name': 'Ramesh Admin',
         'phone': '+91 9876543210',
         'role': 'Operations Admin',

@@ -10,6 +10,7 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.dbName = 'roapp_test_inventory_repository.db';
   });
 
   group('InventoryRepository Tests', () {

@@ -9,6 +9,7 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.dbName = 'roapp_test_settings_repository.db';
   });
 
   group('SettingsRepository', () {

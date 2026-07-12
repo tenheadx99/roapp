@@ -889,7 +889,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     ),
                   ],
                 ),
-                if (data.contracts.isNotEmpty) ...[
+                if (data.activeContracts.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   const Text(
                     'ACTIVE AMC CONTRACTS',
@@ -901,7 +901,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...data.contracts.map((contract) {
+                  ...data.activeContracts.map((contract) {
                     final visitsUsed = contract.visitsUsed;
                     final visitsIncluded = contract.visitsIncluded;
                     final progress = visitsIncluded > 0 ? (visitsUsed / visitsIncluded).clamp(0.0, 1.0) : 0.0;
@@ -954,7 +954,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Start: ${contract.startDate}',
+                                'Start: ${_formatContractDate(contract.startDate)}',
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: Color(0xFF94A3B8),
@@ -962,7 +962,7 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
                                 ),
                               ),
                               Text(
-                                'Ends: ${contract.endDate}',
+                                'Ends: ${_formatContractDate(contract.endDate)}',
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: Color(0xFF94A3B8),
@@ -1079,6 +1079,16 @@ class _CustomerProfileScreenState extends State<CustomerProfileScreen> {
         );
       },
     );
+  }
+
+  String _formatContractDate(String isoDate) {
+    final date = DateTime.tryParse(isoDate);
+    if (date == null) return isoDate;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
   Future<_CustomerLifecycleData> _loadCustomerLifecycle(
@@ -1657,6 +1667,12 @@ class _CustomerLifecycleData {
   double get balanceDue =>
       invoices.fold<double>(0, (sum, invoice) => sum + invoice.balanceDue);
 
-  int get remainingVisits =>
-      contracts.fold<int>(0, (sum, contract) => sum + contract.visitsRemaining);
+  List<AmcContract> get activeContracts => contracts
+      .where((contract) => contract.status.toLowerCase() == 'active')
+      .toList();
+
+  int get remainingVisits => activeContracts.fold<int>(
+    0,
+    (sum, contract) => sum + contract.visitsRemaining,
+  );
 }

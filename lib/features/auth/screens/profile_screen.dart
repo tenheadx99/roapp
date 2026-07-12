@@ -467,7 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Enter Password to Confirm',
-                  hintText: 'password123',
+                  hintText: 'Your account password',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -485,8 +485,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (passwordController.text ==
-                    AuthRepository.defaultAdminPasskey) {
+                final passkeyOk = await AuthRepository().verifyPasskey(
+                  passwordController.text,
+                );
+                if (!dialogContext.mounted) return;
+                if (passkeyOk) {
                   if (shouldBackup) {
                     try {
                       final message = await DbExporter.exportDatabase();

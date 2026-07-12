@@ -48,8 +48,21 @@ class OperationsRepository {
     await db.delete('invoices', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Contract status is only computed when a contract is saved, so mark any
+  /// active contract whose end date has passed as expired before reading.
+  Future<void> _expireStaleContracts(Database db) async {
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    await db.update(
+      'amc_contracts',
+      {'status': 'expired'},
+      where: "LOWER(status) = 'active' AND substr(endDate, 1, 10) < ?",
+      whereArgs: [todayStr],
+    );
+  }
+
   Future<List<AmcContract>> getContracts({String? customerId}) async {
     final db = await dbHelper.database;
+    await _expireStaleContracts(db);
     final maps = await db.query(
       'amc_contracts',
       where: customerId == null ? null : 'customerId = ?',
@@ -190,45 +203,41 @@ class OperationsRepository {
   }
 
   Future<Map<String, dynamic>> getOperationsOverview() async {
-    final invoices = await getInvoices();
-    final contracts = await getContracts();
-    final purchaseOrders = await getPurchaseOrders();
-    final schedules = await getTechnicianSchedules();
-    final logs = await getCommunicationLogs();
-    final attachments = await getAttachments();
+    final db = await dbHelper.database;
+    await _expireStaleContracts(db);
 
-    final outstandingBalance = invoices.fold<double>(
-      0,
-      (sum, invoice) => sum + invoice.balanceDue,
+    final nowIso = DateTime.now().toIso8601String();
+    final todayStr = nowIso.substring(0, 10);
+
+    final rows = await db.rawQuery(
+      '''
+SELECT
+  (SELECT COALESCE(SUM(totalAmount - paidAmount), 0) FROM invoices) AS outstandingBalance,
+  (SELECT COUNT(*) FROM invoices
+     WHERE (totalAmount - paidAmount) > 0.01 AND dueDate < ?) AS overdueInvoices,
+  (SELECT COUNT(*) FROM amc_contracts WHERE renewalReminderDate <= ?) AS expiringContracts,
+  (SELECT COUNT(*) FROM purchase_orders WHERE LOWER(status) != 'received') AS openPurchaseOrders,
+  (SELECT COUNT(*) FROM technician_schedules WHERE substr(scheduleDate, 1, 10) = ?) AS plannedToday,
+  (SELECT COUNT(*) FROM communication_logs) AS communicationLogs,
+  (SELECT COUNT(*) FROM service_attachments) AS attachments,
+  (SELECT COUNT(*) FROM invoices) AS activeInvoices,
+  (SELECT COUNT(*) FROM amc_contracts) AS activeContracts
+''',
+      [nowIso, nowIso, todayStr],
     );
-    final overdueInvoices = invoices
-        .where((invoice) => invoice.isOverdue)
-        .length;
-    final expiringContracts = contracts
-        .where((contract) => contract.isRenewalDue)
-        .length;
-    final openPurchaseOrders = purchaseOrders
-        .where((order) => order.status.toLowerCase() != 'received')
-        .length;
-    final today = DateTime.now();
-    final plannedToday = schedules.where((schedule) {
-      final date = DateTime.tryParse(schedule.scheduleDate);
-      if (date == null) return false;
-      return date.year == today.year &&
-          date.month == today.month &&
-          date.day == today.day;
-    }).length;
 
+    final row = rows.first;
     return {
-      'outstandingBalance': outstandingBalance,
-      'overdueInvoices': overdueInvoices,
-      'expiringContracts': expiringContracts,
-      'openPurchaseOrders': openPurchaseOrders,
-      'plannedToday': plannedToday,
-      'communicationLogs': logs.length,
-      'attachments': attachments.length,
-      'activeInvoices': invoices.length,
-      'activeContracts': contracts.length,
+      'outstandingBalance':
+          (row['outstandingBalance'] as num?)?.toDouble() ?? 0.0,
+      'overdueInvoices': row['overdueInvoices'] as int? ?? 0,
+      'expiringContracts': row['expiringContracts'] as int? ?? 0,
+      'openPurchaseOrders': row['openPurchaseOrders'] as int? ?? 0,
+      'plannedToday': row['plannedToday'] as int? ?? 0,
+      'communicationLogs': row['communicationLogs'] as int? ?? 0,
+      'attachments': row['attachments'] as int? ?? 0,
+      'activeInvoices': row['activeInvoices'] as int? ?? 0,
+      'activeContracts': row['activeContracts'] as int? ?? 0,
     };
   }
 

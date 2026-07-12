@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Access Support'),
         content: const Text(
-          'This build uses a local on-device database. If you lose access, use "Forgot Password?" to restore the seeded admin account:\n\nadmin@roservice.com\npassword123',
+          'This build uses a local on-device database. If you lose access, use "Forgot Password?" to reset the seeded admin account — the sign-in form is filled in for you afterwards.',
         ),
         actions: [
           TextButton(

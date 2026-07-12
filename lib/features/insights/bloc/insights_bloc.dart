@@ -166,7 +166,24 @@ class InsightsError extends InsightsState {
 
 // --- Bloc ---
 class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
-  InsightsBloc() : super(InsightsInitial()) {
+  final TechnicianRepository techRepo;
+  final CustomerRepository customerRepo;
+  final DispatchRepository dispatchRepo;
+  final OperationsRepository operationsRepo;
+  final SupplierRepository supplierRepo;
+
+  InsightsBloc({
+    TechnicianRepository? technicianRepository,
+    CustomerRepository? customerRepository,
+    DispatchRepository? dispatchRepository,
+    OperationsRepository? operationsRepository,
+    SupplierRepository? supplierRepository,
+  })  : techRepo = technicianRepository ?? TechnicianRepository(),
+        customerRepo = customerRepository ?? CustomerRepository(),
+        dispatchRepo = dispatchRepository ?? DispatchRepository(),
+        operationsRepo = operationsRepository ?? OperationsRepository(),
+        supplierRepo = supplierRepository ?? SupplierRepository(),
+        super(InsightsInitial()) {
     on<LoadInsightsData>(_onLoadData);
     on<ChangeTimeRange>(_onChangeTimeRange);
   }
@@ -195,12 +212,6 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
   }) async {
     emit(InsightsLoading());
     try {
-      final techRepo = TechnicianRepository();
-      final customerRepo = CustomerRepository();
-      final dispatchRepo = DispatchRepository();
-      final operationsRepo = OperationsRepository();
-      final supplierRepo = SupplierRepository();
-
       final technicians = await techRepo.getTechnicians();
       final requests = await dispatchRepo.getServiceRequests();
       final serviceHistory = await customerRepo.getAllServiceHistory();
@@ -514,8 +525,11 @@ class InsightsBloc extends Bloc<InsightsEvent, InsightsState> {
           serviceCharge: totalServiceCharge,
         ),
       );
-    } catch (e) {
-      emit(InsightsError(e.toString()));
+    } catch (e, stackTrace) {
+      addError(e, stackTrace);
+      emit(
+        const InsightsError('Could not load insights. Please try again.'),
+      );
     }
   }
 

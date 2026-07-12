@@ -12,7 +12,6 @@ class DispatchRepository {
 
   Future<List<ServiceRequest>> getServiceRequests() async {
     final db = await dbHelper.database;
-    await _synchronizeCompletedRequests(db);
     final maps = await db.query(
       'service_requests',
       orderBy: 'scheduledFor ASC, time ASC',
@@ -44,7 +43,6 @@ class DispatchRepository {
     String? customerName,
   }) async {
     final db = await dbHelper.database;
-    await _synchronizeCompletedRequests(db);
     late final List<Map<String, Object?>> maps;
 
     final hasCustomerId = (customerId ?? '').trim().isNotEmpty;
@@ -81,10 +79,19 @@ class DispatchRepository {
 
   Future<void> addServiceRequest(ServiceRequest request) async {
     final db = await dbHelper.database;
-    await db.insert('service_requests', request.toMap());
-    if (request.status == 'completed') {
-      await _synchronizeCompletedRequests(db);
-    }
+    final toStore = request.status == 'completed'
+        ? request.copyWith(
+            completedAt: request.completedAt ??
+                request.scheduledFor ??
+                DateTime.now().toIso8601String(),
+          )
+        : request;
+    await db.transaction((txn) async {
+      await txn.insert('service_requests', toStore.toMap());
+      if (toStore.status == 'completed') {
+        await _syncCompletedRequestArtifacts(txn, toStore);
+      }
+    });
   }
 
   Future<void> updateServiceRequest(ServiceRequest request) async {
@@ -131,34 +138,6 @@ class DispatchRepository {
   Future<void> deleteServiceRequest(String id) async {
     final db = await dbHelper.database;
     await db.delete('service_requests', where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<void> _synchronizeCompletedRequests(Database db) async {
-    await db.transaction((txn) async {
-      final completedMaps = await txn.query(
-        'service_requests',
-        where: 'status = ?',
-        whereArgs: ['completed'],
-      );
-
-      for (final map in completedMaps) {
-        final request = ServiceRequest.fromMap(map);
-        if ((request.completedAt ?? '').trim().isEmpty) {
-          final completedAt =
-              request.scheduledFor ?? DateTime.now().toIso8601String();
-          final updated = request.copyWith(completedAt: completedAt);
-          await txn.update(
-            'service_requests',
-            updated.toMap(),
-            where: 'id = ?',
-            whereArgs: [request.id],
-          );
-          await _syncCompletedRequestArtifacts(txn, updated);
-        } else {
-          await _syncCompletedRequestArtifacts(txn, request);
-        }
-      }
-    });
   }
 
   Future<void> _syncCompletedRequestArtifacts(
@@ -230,28 +209,36 @@ class DispatchRepository {
       whereArgs: [customer.id],
     );
 
-    // Auto AMC Visits Deduction: If the customer has an active AMC contract, deduct/increment visitsUsed
-    try {
-      final activeContracts = await db.query(
-        'amc_contracts',
-        where: 'customerId = ? AND (LOWER(status) = ? OR status = ?)',
-        whereArgs: [customer.id, 'active', 'Active'],
-      );
-      for (final contractMap in activeContracts) {
-        final visitsUsed = contractMap['visitsUsed'] as int? ?? 0;
-        final visitsIncluded = contractMap['visitsIncluded'] as int? ?? 0;
-        if (visitsUsed < visitsIncluded) {
-          await db.update(
-            'amc_contracts',
-            {'visitsUsed': visitsUsed + 1},
-            where: 'id = ?',
-            whereArgs: [contractMap['id']],
-          );
-          break; // Increment only one visit on the first active contract
+    // Auto AMC Visits Deduction: AMC-type services consume a visit from the
+    // customer's active contract. Only on the first sync of this request (no
+    // service_history row yet) — re-syncs must not inflate visitsUsed.
+    final isAmcService = request.type.toLowerCase().contains('amc');
+    if (isAmcService && existingHistory.isEmpty) {
+      try {
+        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+        final activeContracts = await db.query(
+          'amc_contracts',
+          where:
+              'customerId = ? AND LOWER(status) = ? AND substr(endDate, 1, 10) >= ?',
+          whereArgs: [customer.id, 'active', todayStr],
+          orderBy: 'endDate ASC',
+        );
+        for (final contractMap in activeContracts) {
+          final visitsUsed = contractMap['visitsUsed'] as int? ?? 0;
+          final visitsIncluded = contractMap['visitsIncluded'] as int? ?? 0;
+          if (visitsUsed < visitsIncluded) {
+            await db.update(
+              'amc_contracts',
+              {'visitsUsed': visitsUsed + 1},
+              where: 'id = ?',
+              whereArgs: [contractMap['id']],
+            );
+            break; // Increment only one visit on the first active contract
+          }
         }
+      } catch (e) {
+        // Safe fallback to prevent stopping service completion in case of query errors
       }
-    } catch (e) {
-      // Safe fallback to prevent stopping service completion in case of query errors
     }
 
     await db.update(

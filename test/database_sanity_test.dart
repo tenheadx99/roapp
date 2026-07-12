@@ -7,6 +7,7 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.dbName = 'roapp_test_database_sanity.db';
   });
 
   group('Sanity Tests - Database & Repositories', () {

@@ -15,11 +15,12 @@ class CustomerRepository {
 
   Future<List<String>> getActiveAmcCustomerIds() async {
     final db = await dbHelper.database;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
     final maps = await db.query(
       'amc_contracts',
       columns: ['customerId'],
-      where: 'status = ?',
-      whereArgs: ['active'],
+      where: 'LOWER(status) = ? AND substr(endDate, 1, 10) >= ?',
+      whereArgs: ['active', todayStr],
     );
     return maps.map((e) => e['customerId'] as String).toList();
   }

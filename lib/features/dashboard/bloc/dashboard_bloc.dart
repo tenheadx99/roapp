@@ -52,7 +52,18 @@ class DashboardError extends DashboardState {
 
 // --- Bloc ---
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
-  DashboardBloc() : super(DashboardInitial()) {
+  final CustomerRepository customerRepo;
+  final InventoryRepository inventoryRepo;
+  final DispatchRepository dispatchRepo;
+
+  DashboardBloc({
+    CustomerRepository? customerRepository,
+    InventoryRepository? inventoryRepository,
+    DispatchRepository? dispatchRepository,
+  })  : customerRepo = customerRepository ?? CustomerRepository(),
+        inventoryRepo = inventoryRepository ?? InventoryRepository(),
+        dispatchRepo = dispatchRepository ?? DispatchRepository(),
+        super(DashboardInitial()) {
     on<DashboardDataRequested>(_onDataRequested);
     on<DashboardDataClearRequested>(_onDataClearRequested);
   }
@@ -64,10 +75,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     emit(DashboardLoading());
 
     try {
-      final customerRepo = CustomerRepository();
-      final inventoryRepo = InventoryRepository();
-      final dispatchRepo = DispatchRepository();
-
       final requests = await dispatchRepo.getServiceRequests();
       final customers = await customerRepo.getCustomers();
       final serviceHistory = await customerRepo.getAllServiceHistory();
@@ -197,8 +204,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       );
 
       emit(DashboardLoaded(stats, activityCards, scheduledServices));
-    } catch (e) {
-      emit(DashboardError(e.toString()));
+    } catch (e, stackTrace) {
+      addError(e, stackTrace);
+      emit(
+        const DashboardError(
+          'Could not load the dashboard. Pull down to retry.',
+        ),
+      );
     }
   }
 
@@ -298,8 +310,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     try {
       await DatabaseHelper.instance.clearAllData();
       add(DashboardDataRequested());
-    } catch (e) {
-      emit(DashboardError(e.toString()));
+    } catch (e, stackTrace) {
+      addError(e, stackTrace);
+      emit(const DashboardError('Could not clear the data. Try again.'));
     }
   }
 }

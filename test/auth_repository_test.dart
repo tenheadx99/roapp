@@ -8,6 +8,7 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.dbName = 'roapp_test_auth_repository.db';
   });
 
   group('AuthRepository Tests', () {
